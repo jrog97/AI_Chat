@@ -1,0 +1,1646 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A local AI coding assistant for exploring projects, asking coding questions, and reviewing proposed changes.">
+  <title>Offline Coding Assistant</title>
+
+  <link rel="stylesheet" href="/static/prism.css">
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e14;
+      --surface: #111620;
+      --surface-raised: #171e2a;
+      --surface-hover: #202a39;
+      --border: #283244;
+      --text: #e7edf7;
+      --muted: #8c9ab0;
+      --accent: #8b9cff;
+      --accent-hover: #a5b1ff;
+      --success: #65d6a0;
+      --danger: #ff858b;
+      --warning: #f3c969;
+      --radius: 12px;
+      --sidebar-width: 330px;
+      --shadow: 0 12px 36px rgb(0 0 0 / 22%);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-width: 320px;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: 64px minmax(0, 1fr) 28px;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+    .brand-icon {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      place-items: center;
+      border: 1px solid rgb(139 156 255 / 35%);
+      border-radius: 11px;
+      background: rgb(139 156 255 / 12%);
+      color: var(--accent);
+      font-size: 19px;
+      font-weight: 800;
+    }
+
+    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: -.3px; }
+    .brand-subtitle { margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+    .local-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid rgb(101 214 160 / 25%);
+      border-radius: 999px;
+      background: rgb(101 214 160 / 7%);
+      color: var(--success);
+      font-size: 11px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .local-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 9px rgb(101 214 160 / 50%);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .sidebar-heading {
+      padding: 20px 18px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-title { margin: 0; font-size: 17px; font-weight: 750; letter-spacing: -.4px; }
+
+    .sidebar-description {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px;
+      scrollbar-color: var(--border) transparent;
+      scrollbar-width: thin;
+    }
+
+    .section-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #b9c4d7;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .field, .textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color .15s ease;
+    }
+
+    .field { min-height: 39px; padding: 10px 11px; }
+
+    .textarea {
+      display: block;
+      min-height: 90px;
+      padding: 11px;
+      line-height: 1.55;
+      resize: vertical;
+    }
+
+    .field::placeholder, .textarea::placeholder { color: #647187; }
+
+    .field:focus, .textarea:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-raised);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+      transition: background .15s ease, border-color .15s ease;
+    }
+
+    .button:hover:not(:disabled) {
+      border-color: #45536b;
+      background: var(--surface-hover);
+    }
+
+    .button-primary {
+      border-color: transparent;
+      background: var(--accent);
+      color: #101522;
+    }
+
+    .button-primary:hover:not(:disabled) {
+      border-color: transparent;
+      background: var(--accent-hover);
+    }
+
+    .button-small { min-height: 29px; padding: 5px 8px; font-size: 11px; }
+    .button-full { width: 100%; }
+
+    .project-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .status-line {
+      min-height: 20px;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .status-line.success { color: var(--success); }
+    .status-line.error { color: var(--danger); }
+    .status-line.warning { color: var(--warning); }
+
+    .sidebar-divider {
+      height: 1px;
+      margin: 18px 0;
+      border: 0;
+      background: var(--border);
+    }
+
+    .files-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .files-heading .section-label { margin: 0; }
+
+    .count-label {
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: var(--surface-hover);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .file-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      max-height: 280px;
+      min-height: 70px;
+      overflow-y: auto;
+      padding: 5px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      scrollbar-color: var(--border) transparent;
+      scrollbar-width: thin;
+    }
+
+    .empty-state {
+      display: grid;
+      flex: 1;
+      min-height: 70px;
+      place-items: center;
+      padding: 18px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 7px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    .file-item:hover { background: var(--surface); }
+
+    .file-item:has(input:checked) {
+      border-color: rgb(139 156 255 / 25%);
+      background: rgb(139 156 255 / 8%);
+    }
+
+    .file-item input { flex-shrink: 0; margin: 2px 0 0; accent-color: var(--accent); }
+
+    .file-name {
+      min-width: 0;
+      color: #cbd5e5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .file-item input:checked + .file-name { color: var(--text); }
+
+    .project-question-area { margin-top: 15px; }
+    .project-question-area .textarea { min-height: 76px; }
+
+    .project-answer {
+      margin-top: 12px;
+      padding: 11px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--bg);
+      color: #cbd5e5;
+      font-size: 12px;
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .project-answer:empty { display: none; }
+
+    /* Code-change proposal */
+
+    .change-panel {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .change-panel h3 { margin: 0; font-size: 14px; font-weight: 750; }
+
+    .change-description {
+      margin: 7px 0 12px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .selected-file-card {
+      margin-bottom: 10px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+    }
+
+    .selected-file-label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+    }
+
+    .selected-file-name {
+      color: var(--accent);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .review-note {
+      margin: 11px 0;
+      padding: 10px;
+      border: 1px solid rgb(243 201 105 / 22%);
+      border-radius: 8px;
+      background: rgb(243 201 105 / 6%);
+      color: #d8c99e;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .review-note strong { color: var(--warning); }
+
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 15px 0 8px;
+    }
+
+    .preview-toolbar h4 { margin: 0; font-size: 12px; font-weight: 750; }
+
+    .change-preview {
+      min-height: 110px;
+      max-height: 350px;
+      overflow: auto;
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #090c11;
+      color: #c8d5e8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      tab-size: 2;
+    }
+
+    .change-preview:empty::before {
+      content: "Your proposed change will appear here.";
+      color: #647187;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    /* Chat workspace */
+
+    .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 66px;
+      padding: 12px 22px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .chat-heading { min-width: 0; }
+    .chat-heading h1 { margin: 0; font-size: 15px; font-weight: 750; }
+    .chat-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+    .chat-header-actions { display: flex; gap: 7px; }
+
+    .messages {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 22px;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 26px clamp(16px, 5vw, 70px);
+      scroll-behavior: smooth;
+      scrollbar-color: var(--border) transparent;
+      scrollbar-width: thin;
+    }
+
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 570px;
+      margin: auto;
+      padding: 24px 0;
+      text-align: center;
+    }
+
+    .welcome-icon {
+      display: grid;
+      width: 58px;
+      height: 58px;
+      margin-bottom: 20px;
+      place-items: center;
+      border: 1px solid rgb(139 156 255 / 30%);
+      border-radius: 18px;
+      background: rgb(139 156 255 / 10%);
+      color: var(--accent);
+      font-size: 26px;
+    }
+
+    .welcome h2 { margin: 0; font-size: clamp(22px, 3vw, 29px); font-weight: 800; letter-spacing: -1px; }
+
+    .welcome p {
+      max-width: 460px;
+      margin: 12px 0 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+    .suggestion {
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: #cbd5e5;
+      font-size: 11px;
+      text-align: left;
+    }
+
+    .suggestion:hover { border-color: #45536b; background: var(--surface-hover); }
+
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .message-avatar {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-raised);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .message.user .message-avatar { color: var(--success); }
+    .message-content { flex: 1; min-width: 0; padding-top: 3px; }
+    .message-role { margin-bottom: 8px; color: #cbd5e5; font-size: 12px; font-weight: 750; }
+
+    .message-body {
+      color: #d5ddec;
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-wrap: anywhere;
+    }
+
+    .message.user .message-body { color: #e7edf7; }
+    .message-body p { margin: 0 0 12px; }
+    .message-body p:last-child { margin-bottom: 0; }
+    .message-body ul, .message-body ol { padding-left: 22px; }
+    .message-body li { margin: 5px 0; }
+
+    .message-body code:not([class*="language-"]) {
+      padding: 2px 5px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--surface);
+      color: #c4ccff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .9em;
+    }
+
+    .code-block {
+      overflow: hidden;
+      margin: 14px 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #090c11;
+    }
+
+    .code-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 11px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .code-language { color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; }
+
+    .copy-code {
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface-raised);
+      color: #cbd5e5;
+      font-size: 10px;
+    }
+
+    .copy-code:hover { background: var(--surface-hover); }
+
+    .code-block pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 15px;
+      background: transparent !important;
+      font-size: 12px;
+      line-height: 1.7;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .code-block pre code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-shadow: none !important; }
+
+    .typing-indicator { display: inline-flex; align-items: center; gap: 5px; padding: 4px 0; }
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: .15s; }
+    .typing-indicator span:nth-child(3) { animation-delay: .3s; }
+
+    @keyframes pulse {
+      0%, 60%, 100% { opacity: .35; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-3px); }
+    }
+
+    .composer-area {
+      padding: 12px clamp(16px, 5vw, 70px) 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .composer {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px;
+      border: 1px solid #354157;
+      border-radius: 13px;
+      background: var(--bg);
+      box-shadow: var(--shadow);
+    }
+
+    .composer:focus-within { border-color: #6575be; }
+
+    .composer textarea {
+      flex: 1;
+      min-width: 0;
+      min-height: 43px;
+      max-height: 180px;
+      padding: 10px 8px;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      line-height: 1.6;
+      resize: none;
+    }
+
+    .composer textarea::placeholder { color: #6c788c; }
+
+    .send-button {
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #101522;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .send-button:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .composer-hint {
+      max-width: 900px;
+      margin: 8px auto 0;
+      color: #738097;
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .statusbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .statusbar-left, .statusbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .statusbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    @media (max-width: 900px) {
+      :root { --sidebar-width: 280px; }
+      .messages { padding-right: 22px; padding-left: 22px; }
+      .composer-area { padding-right: 22px; padding-left: 22px; }
+    }
+
+    @media (max-width: 680px) {
+      html, body { height: 100%; min-height: 0; }
+      body { grid-template-rows: 58px minmax(0, 1fr) 25px; }
+      .topbar { padding: 0 12px; }
+      .brand-icon { width: 32px; height: 32px; }
+      .brand-subtitle { display: none; }
+      .local-badge { padding: 6px 8px; font-size: 10px; }
+
+      .workspace {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 40%) minmax(0, 60%);
+      }
+
+      .sidebar { grid-row: 1; border-right: 0; border-bottom: 1px solid var(--border); }
+      .sidebar-heading { padding: 12px 14px 10px; }
+      .sidebar-title { font-size: 15px; }
+      .sidebar-description { display: none; }
+      .sidebar-content { padding: 12px 14px; }
+      .main { grid-row: 2; }
+      .chat-header { min-height: 54px; padding: 9px 13px; }
+      .chat-heading h1 { font-size: 13px; }
+      .messages { gap: 18px; padding: 18px 13px; }
+      .message { gap: 9px; }
+      .message-avatar { width: 27px; height: 27px; }
+      .composer-area { padding: 9px 12px; }
+      .composer-hint { font-size: 9px; }
+      .statusbar { padding: 0 8px; }
+      .statusbar-right { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true">&lt;/&gt;</div>
+      <div>
+        <div class="brand-name">Offline Coding Assistant</div>
+        <div class="brand-subtitle">Your local development workspace</div>
+      </div>
+    </div>
+
+    <div class="local-badge">
+      <span class="local-dot" aria-hidden="true"></span>
+      Local AI
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar" aria-label="Project explorer">
+      <div class="sidebar-heading">
+        <div class="eyebrow">Workspace</div>
+        <h2 class="sidebar-title">Project Explorer</h2>
+        <p class="sidebar-description">
+          Load a local project, select files, and ask your AI assistant
+          to analyze your code.
+        </p>
+      </div>
+
+      <div class="sidebar-content">
+        <label class="section-label" for="project-path">Project directory</label>
+
+        <input
+          class="field"
+          type="text"
+          id="project-path"
+          value="~/OfflineCodingAssistant"
+          placeholder="/absolute/path/to/project"
+          autocomplete="off"
+          spellcheck="false"
+        >
+
+        <div class="project-controls">
+          <button class="button button-primary" id="load-project" type="button">
+            Load project
+          </button>
+          <button class="button" id="refresh-files" type="button">Refresh</button>
+        </div>
+
+        <p id="project-status" class="status-line" role="status" aria-live="polite">
+          Load a project to get started.
+        </p>
+
+        <hr class="sidebar-divider">
+
+        <div class="files-heading">
+          <span class="section-label">Project files</span>
+          <span class="count-label" id="file-count">0 files</span>
+        </div>
+
+        <div class="file-actions">
+          <button class="button button-small" id="select-all-files" type="button">Select all</button>
+          <button class="button button-small" id="clear-files" type="button">Clear selection</button>
+        </div>
+
+        <div id="project-files" class="file-list" aria-label="Project files">
+          <div class="empty-state">Your project files will appear here.</div>
+        </div>
+
+        <div class="project-question-area">
+          <label class="section-label" for="project-question">Ask about your project</label>
+          <textarea
+            class="textarea"
+            id="project-question"
+            rows="3"
+            placeholder="Example: Explain how authentication works in this project."
+          ></textarea>
+
+          <button
+            class="button button-primary button-full"
+            id="ask-project"
+            type="button"
+            style="margin-top: 8px;"
+          >
+            Ask about selected files
+          </button>
+
+          <div id="project-answer" class="project-answer" aria-live="polite"></div>
+        </div>
+
+        <section class="change-panel" id="change-panel" aria-labelledby="change-heading">
+          <h3 id="change-heading">Propose a Code Change</h3>
+
+          <p class="change-description">
+            Select exactly one file from the project file list above,
+            then describe the change you want.
+          </p>
+
+          <div class="selected-file-card">
+            <div class="selected-file-label">Selected file</div>
+            <div id="change-selected-file" class="selected-file-name">No file selected</div>
+          </div>
+
+          <label class="section-label" for="change-instruction">Describe the change</label>
+          <textarea
+            class="textarea"
+            id="change-instruction"
+            rows="3"
+            placeholder="Example: Add input validation and clear error messages."
+          ></textarea>
+
+          <button
+            class="button button-primary button-full"
+            id="propose-change"
+            type="button"
+            style="margin-top: 9px;"
+          >
+            Generate Change Preview
+          </button>
+
+          <p id="change-status" class="status-line" role="status" aria-live="polite"></p>
+
+          <div class="review-note">
+            <strong>Review only.</strong>
+            The proposal is displayed for inspection. This interface does
+            not apply changes to your source file.
+          </div>
+
+          <div class="preview-toolbar">
+            <h4>Proposed Change</h4>
+            <button class="button button-small" id="copy-change-preview" type="button" disabled>
+              Copy preview
+            </button>
+          </div>
+
+          <pre id="change-preview" class="change-preview" aria-label="Proposed code change preview"></pre>
+        </section>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="chat-header">
+        <div class="chat-heading">
+          <h1>AI Chat</h1>
+          <p id="chat-subtitle">Ask questions. Build. Debug. Learn.</p>
+        </div>
+
+        <div class="chat-header-actions">
+          <button class="button button-small" id="clear-chat" type="button">Clear chat</button>
+        </div>
+      </div>
+
+      <section id="messages" class="messages" aria-label="Conversation" aria-live="polite">
+        <div class="welcome" id="welcome">
+          <div class="welcome-icon" aria-hidden="true">&lt;/&gt;</div>
+          <h2>Your local coding workspace.</h2>
+          <p>
+            Ask coding questions, troubleshoot errors, understand your project,
+            or generate a proposed code change. Your frontend communicates with
+            your local FastAPI backend.
+          </p>
+
+          <div class="suggestions">
+            <button class="suggestion" type="button" data-prompt="Explain how a REST API works and show me a Python example.">Explain an API</button>
+            <button class="suggestion" type="button" data-prompt="Help me debug a Python error. Explain your debugging process step by step.">Debug my code</button>
+            <button class="suggestion" type="button" data-prompt="Help me write unit tests for a Python function using pytest.">Write unit tests</button>
+            <button class="suggestion" type="button" data-prompt="Explain clean architecture and how I can organize a maintainable software project.">Software architecture</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="composer-area">
+        <form id="chat-form" class="composer">
+          <textarea id="prompt" rows="1" placeholder="Ask your local AI assistant anything..." aria-label="Message" required></textarea>
+          <button class="send-button" id="send" type="submit" aria-label="Send message" title="Send message">↑</button>
+        </form>
+        <div class="composer-hint">Enter to send · Shift + Enter for a new line</div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <div class="statusbar-left">
+      <span class="local-dot" aria-hidden="true"></span>
+      <span id="status">Ready</span>
+    </div>
+    <div class="statusbar-right">
+      <span id="model-status">Connected through your local backend</span>
+    </div>
+  </footer>
+
+  <script src="/static/prism.js"></script>
+
+  <script>
+    "use strict";
+
+    // DOM references
+    const messagesContainer = document.getElementById("messages");
+    const promptInput = document.getElementById("prompt");
+    const sendButton = document.getElementById("send");
+    const statusElement = document.getElementById("status");
+
+    const projectPathInput = document.getElementById("project-path");
+    const loadProjectButton = document.getElementById("load-project");
+    const refreshFilesButton = document.getElementById("refresh-files");
+    const projectStatus = document.getElementById("project-status");
+    const projectFilesContainer = document.getElementById("project-files");
+    const fileCount = document.getElementById("file-count");
+    const projectQuestionInput = document.getElementById("project-question");
+    const askProjectButton = document.getElementById("ask-project");
+    const projectAnswer = document.getElementById("project-answer");
+
+    const changeSelectedFile = document.getElementById("change-selected-file");
+    const changeInstruction = document.getElementById("change-instruction");
+    const proposeChangeButton = document.getElementById("propose-change");
+    const changeStatus = document.getElementById("change-status");
+    const changePreview = document.getElementById("change-preview");
+    const copyChangePreviewButton = document.getElementById("copy-change-preview");
+
+    // State
+    let conversationHistory = [];
+    let loadedProject = null;
+    let isChatBusy = false;
+    let isProjectBusy = false;
+    let isProposalBusy = false;
+
+    // API helpers
+    async function readJsonResponse(response) {
+      const rawText = await response.text();
+      let data;
+
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        throw new Error("The server returned an invalid response. Check the FastAPI endpoint.");
+      }
+
+      if (!response.ok) {
+        const detail = data.detail || data.error || data.message;
+        throw new Error(typeof detail === "string" ? detail : `Request failed: HTTP ${response.status}.`);
+      }
+
+      return data;
+    }
+
+    async function apiGet(url) {
+      return readJsonResponse(await fetch(url, {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      }));
+    }
+
+    async function apiPost(url, body) {
+      return readJsonResponse(await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(body)
+      }));
+    }
+
+    // Status helpers
+    function setStatus(message) {
+      statusElement.textContent = message;
+    }
+
+    function setProjectStatus(message, type = "") {
+      projectStatus.textContent = message;
+      projectStatus.className = "status-line" + (type ? " " + type : "");
+    }
+
+    function setChangeStatus(message, type = "") {
+      changeStatus.textContent = message;
+      changeStatus.className = "status-line" + (type ? " " + type : "");
+    }
+
+    function scrollMessagesToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Clipboard helper with fallback
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const temporary = document.createElement("textarea");
+      temporary.value = text;
+      temporary.style.position = "fixed";
+      temporary.style.opacity = "0";
+      document.body.appendChild(temporary);
+      temporary.select();
+
+      const copied = document.execCommand("copy");
+      temporary.remove();
+
+      if (!copied) {
+        throw new Error("Clipboard access is unavailable.");
+      }
+    }
+
+    // Safe message rendering
+    function renderMessageContent(container, text) {
+      const parts = text.split(/```([^\n`]*)\n([\s\S]*?)```/g);
+
+      for (let i = 0; i < parts.length;) {
+        const plainText = parts[i] ?? "";
+        const language = (parts[i + 1] ?? "").trim().toLowerCase();
+        const code = parts[i + 2];
+
+        if (plainText) {
+          const paragraph = document.createElement("p");
+          paragraph.textContent = plainText;
+          container.appendChild(paragraph);
+        }
+
+        if (code !== undefined) {
+          const block = document.createElement("div");
+          block.className = "code-block";
+
+          const toolbar = document.createElement("div");
+          toolbar.className = "code-toolbar";
+
+          const languageLabel = document.createElement("span");
+          languageLabel.className = "code-language";
+          languageLabel.textContent = language || "code";
+
+          const copyButton = document.createElement("button");
+          copyButton.className = "copy-code";
+          copyButton.type = "button";
+          copyButton.textContent = "Copy code";
+          copyButton.addEventListener("click", async () => {
+            try {
+              await copyText(code);
+              copyButton.textContent = "Copied!";
+            } catch {
+              copyButton.textContent = "Copy failed";
+            }
+
+            setTimeout(() => { copyButton.textContent = "Copy code"; }, 1500);
+          });
+
+          const pre = document.createElement("pre");
+          const codeElement = document.createElement("code");
+          const safeLanguage = language.replace(/[^a-z0-9_-]/g, "");
+
+          if (safeLanguage) {
+            codeElement.className = `language-${safeLanguage}`;
+          }
+
+          codeElement.textContent = code;
+          pre.appendChild(codeElement);
+          toolbar.append(languageLabel, copyButton);
+          block.append(toolbar, pre);
+          container.appendChild(block);
+
+          if (window.Prism && typeof window.Prism.highlightElement === "function") {
+            try { window.Prism.highlightElement(codeElement); } catch {}
+          }
+
+          i += 3;
+        } else {
+          break;
+        }
+      }
+
+      if (!container.hasChildNodes()) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = text;
+        container.appendChild(paragraph);
+      }
+    }
+
+    function appendMessage(role, content, options = {}) {
+      const welcome = document.getElementById("welcome");
+      if (welcome) welcome.remove();
+
+      const message = document.createElement("article");
+      message.className = `message ${role}`;
+
+      const avatar = document.createElement("div");
+      avatar.className = "message-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.textContent = role === "user" ? "You" : "AI";
+
+      const contentContainer = document.createElement("div");
+      contentContainer.className = "message-content";
+
+      const roleLabel = document.createElement("div");
+      roleLabel.className = "message-role";
+      roleLabel.textContent = role === "user" ? "You" : "Assistant";
+
+      const body = document.createElement("div");
+      body.className = "message-body";
+
+      contentContainer.append(roleLabel, body);
+      message.append(avatar, contentContainer);
+      messagesContainer.appendChild(message);
+
+      if (options.typing) {
+        const indicator = document.createElement("div");
+        indicator.className = "typing-indicator";
+        indicator.setAttribute("aria-label", "Assistant is thinking");
+
+        for (let i = 0; i < 3; i++) {
+          indicator.appendChild(document.createElement("span"));
+        }
+
+        body.appendChild(indicator);
+      } else {
+        renderMessageContent(body, String(content ?? ""));
+      }
+
+      scrollMessagesToBottom();
+      return message;
+    }
+
+    function showWelcomeIfEmpty() {
+      if (conversationHistory.length !== 0) return;
+
+      messagesContainer.replaceChildren();
+
+      const welcome = document.createElement("div");
+      welcome.className = "welcome";
+      welcome.id = "welcome";
+
+      const icon = document.createElement("div");
+      icon.className = "welcome-icon";
+      icon.textContent = "</>";
+
+      const heading = document.createElement("h2");
+      heading.textContent = "Your local coding workspace.";
+
+      const description = document.createElement("p");
+      description.textContent =
+        "Ask coding questions, troubleshoot errors, understand your project, " +
+        "or generate a proposed code change. Your frontend communicates with " +
+        "your local FastAPI backend.";
+
+      const suggestions = document.createElement("div");
+      suggestions.className = "suggestions";
+
+      const promptSuggestions = [
+        ["Explain an API", "Explain how a REST API works and show me a Python example."],
+        ["Debug my code", "Help me debug a Python error. Explain your debugging process step by step."],
+        ["Write unit tests", "Help me write unit tests for a Python function using pytest."],
+        ["Software architecture", "Explain clean architecture and how I can organize a maintainable software project."]
+      ];
+
+      for (const [label, text] of promptSuggestions) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "suggestion";
+        button.textContent = label;
+        button.dataset.prompt = text;
+        suggestions.appendChild(button);
+      }
+
+      welcome.append(icon, heading, description, suggestions);
+      messagesContainer.appendChild(welcome);
+    }
+
+    // Chat
+    async function loadHistory() {
+      try {
+        const data = await apiGet("/history");
+        const messages = Array.isArray(data.messages) ? data.messages : [];
+
+        conversationHistory = messages
+          .filter(item =>
+            item &&
+            ["user", "assistant"].includes(item.role) &&
+            typeof item.content === "string"
+          )
+          .map(item => ({ role: item.role, content: item.content }));
+
+        messagesContainer.replaceChildren();
+
+        if (conversationHistory.length === 0) {
+          showWelcomeIfEmpty();
+        } else {
+          conversationHistory.forEach(item => appendMessage(item.role, item.content));
+        }
+
+        setStatus("Chat history loaded");
+      } catch (error) {
+        showWelcomeIfEmpty();
+        setStatus("Ready");
+        console.warn("Could not load chat history:", error.message);
+      }
+    }
+
+    async function sendChatMessage(messageText) {
+      const message = messageText.trim();
+      if (!message || isChatBusy) return;
+
+      isChatBusy = true;
+      sendButton.disabled = true;
+      promptInput.disabled = true;
+      setStatus("Waiting for local AI...");
+
+      appendMessage("user", message);
+
+      const historyForRequest = [
+        ...conversationHistory,
+        { role: "user", content: message }
+      ];
+
+      const typingMessage = appendMessage("assistant", "", { typing: true });
+
+      try {
+        const data = await apiPost("/chat", {
+          message,
+          history: historyForRequest
+        });
+
+        if (typeof data.reply !== "string") {
+          throw new Error("The /chat endpoint must return a string field named 'reply'.");
+        }
+
+        typingMessage.remove();
+        conversationHistory.push(
+          { role: "user", content: message },
+          { role: "assistant", content: data.reply }
+        );
+
+        appendMessage("assistant", data.reply);
+        setStatus("Ready");
+      } catch (error) {
+        typingMessage.remove();
+        appendMessage("assistant", "I couldn't complete the request.\n\n" + error.message);
+        setStatus("Chat request failed");
+      } finally {
+        isChatBusy = false;
+        sendButton.disabled = false;
+        promptInput.disabled = false;
+        promptInput.focus();
+      }
+    }
+
+    document.getElementById("chat-form").addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const message = promptInput.value.trim();
+      if (!message) return;
+
+      promptInput.value = "";
+      autoResizePrompt();
+      await sendChatMessage(message);
+    });
+
+    promptInput.addEventListener("keydown", event => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        document.getElementById("chat-form").requestSubmit();
+      }
+    });
+
+    function autoResizePrompt() {
+      promptInput.style.height = "auto";
+      promptInput.style.height = Math.min(promptInput.scrollHeight, 180) + "px";
+    }
+
+    promptInput.addEventListener("input", autoResizePrompt);
+
+    document.getElementById("clear-chat").addEventListener("click", () => {
+      if (isChatBusy) return;
+
+      conversationHistory = [];
+      showWelcomeIfEmpty();
+      setStatus("Chat cleared");
+
+      // This clears the current browser conversation only.
+      // Clear server-side history separately if your backend persists it.
+    });
+
+    messagesContainer.addEventListener("click", event => {
+      const button = event.target.closest("[data-prompt]");
+      if (!button || isChatBusy) return;
+
+      promptInput.value = button.dataset.prompt || "";
+      autoResizePrompt();
+      promptInput.focus();
+    });
+
+    // Project loading and file selection
+    async function loadProjectFiles() {
+      const data = await apiGet("/project/files");
+      const files = Array.isArray(data.files) ? data.files : [];
+
+      projectFilesContainer.replaceChildren();
+
+      for (const file of files) {
+        if (typeof file !== "string" || !file.trim()) continue;
+
+        const label = document.createElement("label");
+        label.className = "file-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "project-file-checkbox";
+        checkbox.value = file;
+        checkbox.setAttribute("aria-label", `Select ${file}`);
+
+        const name = document.createElement("span");
+        name.className = "file-name";
+        name.textContent = file;
+
+        label.append(checkbox, name);
+        projectFilesContainer.appendChild(label);
+      }
+
+      if (files.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "No files were returned for this project.";
+        projectFilesContainer.appendChild(empty);
+      }
+
+      const count = projectFilesContainer.querySelectorAll(".project-file-checkbox").length;
+      fileCount.textContent = `${count} ${count === 1 ? "file" : "files"}`;
+      updateSelectedFileIndicator();
+    }
+
+    async function loadProject() {
+      const path = projectPathInput.value.trim();
+
+      if (!path) {
+        setProjectStatus("Enter a project directory first.", "error");
+        return;
+      }
+
+      loadProjectButton.disabled = true;
+      refreshFilesButton.disabled = true;
+      setProjectStatus("Loading project...");
+      setStatus("Loading project...");
+
+      try {
+        const data = await apiPost("/project/select", { path });
+        loadedProject = data.project ?? data.path ?? path;
+
+        projectAnswer.textContent = "";
+        changePreview.textContent = "";
+        copyChangePreviewButton.disabled = true;
+        setChangeStatus("");
+
+        await loadProjectFiles();
+
+        setProjectStatus("Project loaded successfully.", "success");
+        setStatus("Project ready");
+      } catch (error) {
+        loadedProject = null;
+        projectFilesContainer.replaceChildren();
+        fileCount.textContent = "0 files";
+        updateSelectedFileIndicator();
+        setProjectStatus(error.message, "error");
+        setStatus("Project loading failed");
+      } finally {
+        loadProjectButton.disabled = false;
+        refreshFilesButton.disabled = false;
+      }
+    }
+
+    document.getElementById("load-project").addEventListener("click", loadProject);
+
+    projectPathInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") loadProject();
+    });
+
+    refreshFilesButton.addEventListener("click", async () => {
+      if (!loadedProject) {
+        setProjectStatus("Load a project before refreshing files.", "warning");
+        return;
+      }
+
+      refreshFilesButton.disabled = true;
+
+      try {
+        await loadProjectFiles();
+        setProjectStatus("File list refreshed.", "success");
+      } catch (error) {
+        setProjectStatus(error.message, "error");
+      } finally {
+        refreshFilesButton.disabled = false;
+      }
+    });
+
+    function getSelectedProjectFiles() {
+      return Array.from(
+        projectFilesContainer.querySelectorAll('input[type="checkbox"]:checked')
+      ).map(checkbox => checkbox.value || checkbox.dataset.path).filter(Boolean);
+    }
+
+    function updateSelectedFileIndicator() {
+      const selected = getSelectedProjectFiles();
+
+      if (selected.length === 1) {
+        changeSelectedFile.textContent = selected[0];
+      } else if (selected.length === 0) {
+        changeSelectedFile.textContent = "No file selected";
+      } else {
+        changeSelectedFile.textContent = `${selected.length} files selected — select exactly one`;
+      }
+    }
+
+    document.getElementById("select-all-files").addEventListener("click", () => {
+      projectFilesContainer.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        input.checked = true;
+      });
+      updateSelectedFileIndicator();
+    });
+
+    document.getElementById("clear-files").addEventListener("click", () => {
+      projectFilesContainer.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        input.checked = false;
+      });
+      updateSelectedFileIndicator();
+    });
+
+    projectFilesContainer.addEventListener("change", event => {
+      if (event.target.matches('input[type="checkbox"]')) {
+        updateSelectedFileIndicator();
+      }
+    });
+
+    // Ask about selected project files
+    async function askAboutProject() {
+      const question = projectQuestionInput.value.trim();
+      const selectedFiles = getSelectedProjectFiles();
+
+      if (!loadedProject) {
+        setProjectStatus("Load a project first.", "warning");
+        return;
+      }
+
+      if (!question) {
+        projectAnswer.textContent = "Enter a question about your project.";
+        return;
+      }
+
+      if (selectedFiles.length === 0) {
+        projectAnswer.textContent = "Select at least one project file.";
+        return;
+      }
+
+      if (isProjectBusy) return;
+
+      isProjectBusy = true;
+      askProjectButton.disabled = true;
+      askProjectButton.textContent = "Analyzing...";
+      projectAnswer.textContent = "Analyzing the selected files...";
+
+      try {
+        const data = await apiPost("/project/ask", {
+          question,
+          files: selectedFiles
+        });
+
+        const answer = data.reply ?? data.answer;
+        if (typeof answer !== "string") {
+          throw new Error("The /project/ask endpoint must return 'reply' or 'answer'.");
+        }
+
+        projectAnswer.textContent = answer;
+        setProjectStatus("Project analysis completed.", "success");
+      } catch (error) {
+        projectAnswer.textContent = "Could not analyze the project: " + error.message;
+        setProjectStatus("Project analysis failed.", "error");
+      } finally {
+        isProjectBusy = false;
+        askProjectButton.disabled = false;
+        askProjectButton.textContent = "Ask about selected files";
+      }
+    }
+
+    askProjectButton.addEventListener("click", askAboutProject);
+
+    // ---------------------------------------------------------
+    // PROPOSE A CODE CHANGE
+    // This is the integrated version of your supplied script.
+    // Uses POST /project/propose with { path, instruction }.
+    // Expects a JSON response containing { proposal: "..." }.
+    // ---------------------------------------------------------
+
+    proposeChangeButton.addEventListener("click", async () => {
+      if (isProposalBusy) return;
+
+      const selected = Array.from(
+        projectFilesContainer.querySelectorAll('input[type="checkbox"]:checked')
+      );
+
+      if (selected.length !== 1) {
+        setChangeStatus("Select exactly one project file first.", "warning");
+        return;
+      }
+
+      const requestText = changeInstruction.value.trim();
+
+      if (!requestText) {
+        setChangeStatus("Describe the code change you want.", "warning");
+        changeInstruction.focus();
+        return;
+      }
+
+      const selectedPath = selected[0].value || selected[0].dataset.path;
+
+      if (!selectedPath) {
+        setChangeStatus(
+          "Could not identify the selected file. Check the file-list code.",
+          "error"
+        );
+        return;
+      }
+
+      if (!loadedProject) {
+        setChangeStatus("Load a project first.", "warning");
+        return;
+      }
+
+      isProposalBusy = true;
+      proposeChangeButton.disabled = true;
+      copyChangePreviewButton.disabled = true;
+      changePreview.textContent = "";
+      setChangeStatus("Generating a proposal locally...");
+      setStatus("Generating code change preview...");
+
+      try {
+        const response = await fetch("/project/propose", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            path: selectedPath,
+            instruction: requestText
+          })
+        });
+
+        const data = await readJsonResponse(response);
+
+        if (typeof data.proposal !== "string") {
+          throw new Error(
+            "The /project/propose endpoint must return a string field named 'proposal'."
+          );
+        }
+
+        changePreview.textContent = data.proposal;
+        copyChangePreviewButton.disabled = data.proposal.length === 0;
+
+        setChangeStatus(
+          "Preview generated. No files have been modified.",
+          "success"
+        );
+        setStatus("Proposal ready for review");
+      } catch (error) {
+        setChangeStatus("Error: " + error.message, "error");
+        setStatus("Proposal generation failed");
+      } finally {
+        isProposalBusy = false;
+        proposeChangeButton.disabled = false;
+      }
+    });
+
+    copyChangePreviewButton.addEventListener("click", async () => {
+      const proposal = changePreview.textContent;
+      if (!proposal) return;
+
+      try {
+        await copyText(proposal);
+        copyChangePreviewButton.textContent = "Copied!";
+      } catch {
+        setChangeStatus(
+          "Unable to copy the preview. Select the text and copy it manually.",
+          "warning"
+        );
+      }
+
+      setTimeout(() => {
+        copyChangePreviewButton.textContent = "Copy preview";
+      }, 1500);
+    });
+
+    // Start the application
+    async function initializeApp() {
+      updateSelectedFileIndicator();
+      await loadHistory();
+    }
+
+    initializeApp();
+  </script>
+</body>
+</html>
