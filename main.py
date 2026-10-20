@@ -32,7 +32,11 @@ app = FastAPI(
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "assistant.db"
+if os.environ.get("OFFLINE_ASSISTANT_USE_USER_DATA") == "1":
+    from app_paths import get_data_dir
+    DB_PATH = get_data_dir() / "assistant.db"
+else:
+    DB_PATH = BASE_DIR / "assistant.db"
 
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 OLLAMA_CHAT_URL = f"{OLLAMA_BASE_URL}/api/chat"
