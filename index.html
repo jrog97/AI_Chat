@@ -1,1646 +1,2333 @@
+<!doctype html>
 
-<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="A local AI coding assistant for exploring projects, asking coding questions, and reviewing proposed changes.">
-  <title>Offline Coding Assistant</title>
 
-  <link rel="stylesheet" href="/static/prism.css">
+<head>
+
+  <meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Offline AI Assistant</title>
 
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b0e14;
-      --surface: #111620;
-      --surface-raised: #171e2a;
-      --surface-hover: #202a39;
-      --border: #283244;
-      --text: #e7edf7;
-      --muted: #8c9ab0;
-      --accent: #8b9cff;
-      --accent-hover: #a5b1ff;
-      --success: #65d6a0;
-      --danger: #ff858b;
-      --warning: #f3c969;
-      --radius: 12px;
-      --sidebar-width: 330px;
-      --shadow: 0 12px 36px rgb(0 0 0 / 22%);
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      width: 100%;
-      min-width: 320px;
-      height: 100%;
-      margin: 0;
-    }
-
-    body {
-      display: grid;
-      grid-template-rows: 64px minmax(0, 1fr) 28px;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 14px;
-    }
-
-    button, input, textarea { font: inherit; }
-    button { cursor: pointer; }
-    button:disabled { cursor: not-allowed; opacity: .55; }
-
-    button:focus-visible,
-    input:focus-visible,
-    textarea:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 0 22px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-
-    .brand-icon {
-      display: grid;
-      width: 36px;
-      height: 36px;
-      flex-shrink: 0;
-      place-items: center;
-      border: 1px solid rgb(139 156 255 / 35%);
-      border-radius: 11px;
-      background: rgb(139 156 255 / 12%);
-      color: var(--accent);
-      font-size: 19px;
-      font-weight: 800;
-    }
-
-    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: -.3px; }
-    .brand-subtitle { margin-top: 3px; color: var(--muted); font-size: 11px; }
-
-    .local-badge {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 10px;
-      border: 1px solid rgb(101 214 160 / 25%);
-      border-radius: 999px;
-      background: rgb(101 214 160 / 7%);
-      color: var(--success);
-      font-size: 11px;
-      font-weight: 650;
-      white-space: nowrap;
-    }
-
-    .local-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 9px rgb(101 214 160 / 50%);
-    }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 0;
-      overflow: hidden;
-      border-right: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .sidebar-heading {
-      padding: 20px 18px 14px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .eyebrow {
-      margin-bottom: 7px;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 750;
-      letter-spacing: 1.3px;
-      text-transform: uppercase;
-    }
-
-    .sidebar-title { margin: 0; font-size: 17px; font-weight: 750; letter-spacing: -.4px; }
-
-    .sidebar-description {
-      margin: 7px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .sidebar-content {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 16px;
-      scrollbar-color: var(--border) transparent;
-      scrollbar-width: thin;
-    }
-
-    .section-label {
-      display: block;
-      margin-bottom: 8px;
-      color: #b9c4d7;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .field, .textarea {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: var(--bg);
-      color: var(--text);
-      transition: border-color .15s ease;
-    }
-
-    .field { min-height: 39px; padding: 10px 11px; }
-
-    .textarea {
-      display: block;
-      min-height: 90px;
-      padding: 11px;
-      line-height: 1.55;
-      resize: vertical;
-    }
-
-    .field::placeholder, .textarea::placeholder { color: #647187; }
-
-    .field:focus, .textarea:focus {
-      border-color: var(--accent);
-      outline: none;
-    }
-
-    .button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      min-height: 36px;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: var(--surface-raised);
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 650;
-      transition: background .15s ease, border-color .15s ease;
-    }
-
-    .button:hover:not(:disabled) {
-      border-color: #45536b;
-      background: var(--surface-hover);
-    }
-
-    .button-primary {
-      border-color: transparent;
-      background: var(--accent);
-      color: #101522;
-    }
-
-    .button-primary:hover:not(:disabled) {
-      border-color: transparent;
-      background: var(--accent-hover);
-    }
-
-    .button-small { min-height: 29px; padding: 5px 8px; font-size: 11px; }
-    .button-full { width: 100%; }
-
-    .project-controls {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .status-line {
-      min-height: 20px;
-      margin: 8px 0 0;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    .status-line.success { color: var(--success); }
-    .status-line.error { color: var(--danger); }
-    .status-line.warning { color: var(--warning); }
-
-    .sidebar-divider {
-      height: 1px;
-      margin: 18px 0;
-      border: 0;
-      background: var(--border);
-    }
-
-    .files-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .files-heading .section-label { margin: 0; }
-
-    .count-label {
-      padding: 3px 7px;
-      border-radius: 6px;
-      background: var(--surface-hover);
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 700;
-    }
-
-    .file-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-
-    .file-list {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      max-height: 280px;
-      min-height: 70px;
-      overflow-y: auto;
-      padding: 5px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--bg);
-      scrollbar-color: var(--border) transparent;
-      scrollbar-width: thin;
-    }
-
-    .empty-state {
-      display: grid;
-      flex: 1;
-      min-height: 70px;
-      place-items: center;
-      padding: 18px 12px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.6;
-      text-align: center;
-    }
-
-    .file-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 8px 7px;
-      border: 1px solid transparent;
-      border-radius: 7px;
-      cursor: pointer;
-    }
-
-    .file-item:hover { background: var(--surface); }
-
-    .file-item:has(input:checked) {
-      border-color: rgb(139 156 255 / 25%);
-      background: rgb(139 156 255 / 8%);
-    }
-
-    .file-item input { flex-shrink: 0; margin: 2px 0 0; accent-color: var(--accent); }
-
-    .file-name {
-      min-width: 0;
-      color: #cbd5e5;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 11px;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    .file-item input:checked + .file-name { color: var(--text); }
-
-    .project-question-area { margin-top: 15px; }
-    .project-question-area .textarea { min-height: 76px; }
-
-    .project-answer {
-      margin-top: 12px;
-      padding: 11px;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: var(--bg);
-      color: #cbd5e5;
-      font-size: 12px;
-      line-height: 1.65;
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
-    }
-
-    .project-answer:empty { display: none; }
-
-    /* Code-change proposal */
-
-    .change-panel {
-      margin-top: 18px;
-      padding-top: 18px;
-      border-top: 1px solid var(--border);
-    }
-
-    .change-panel h3 { margin: 0; font-size: 14px; font-weight: 750; }
-
-    .change-description {
-      margin: 7px 0 12px;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.6;
-    }
-
-    .selected-file-card {
-      margin-bottom: 10px;
-      padding: 9px 10px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--bg);
-    }
-
-    .selected-file-label {
-      margin-bottom: 5px;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .6px;
-      text-transform: uppercase;
-    }
-
-    .selected-file-name {
-      color: var(--accent);
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 11px;
-      overflow-wrap: anywhere;
-    }
-
-    .review-note {
-      margin: 11px 0;
-      padding: 10px;
-      border: 1px solid rgb(243 201 105 / 22%);
-      border-radius: 8px;
-      background: rgb(243 201 105 / 6%);
-      color: #d8c99e;
-      font-size: 11px;
-      line-height: 1.55;
-    }
-
-    .review-note strong { color: var(--warning); }
-
-    .preview-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin: 15px 0 8px;
-    }
-
-    .preview-toolbar h4 { margin: 0; font-size: 12px; font-weight: 750; }
-
-    .change-preview {
-      min-height: 110px;
-      max-height: 350px;
-      overflow: auto;
-      margin: 0;
-      padding: 12px;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: #090c11;
-      color: #c8d5e8;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 11px;
-      line-height: 1.7;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      tab-size: 2;
-    }
-
-    .change-preview:empty::before {
-      content: "Your proposed change will appear here.";
-      color: #647187;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    /* Chat workspace */
-
-    .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
-
-    .chat-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 66px;
-      padding: 12px 22px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .chat-heading { min-width: 0; }
-    .chat-heading h1 { margin: 0; font-size: 15px; font-weight: 750; }
-    .chat-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
-    .chat-header-actions { display: flex; gap: 7px; }
-
-    .messages {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      gap: 22px;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 26px clamp(16px, 5vw, 70px);
-      scroll-behavior: smooth;
-      scrollbar-color: var(--border) transparent;
-      scrollbar-width: thin;
-    }
-
-    .welcome {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-width: 570px;
-      margin: auto;
-      padding: 24px 0;
-      text-align: center;
-    }
-
-    .welcome-icon {
-      display: grid;
-      width: 58px;
-      height: 58px;
-      margin-bottom: 20px;
-      place-items: center;
-      border: 1px solid rgb(139 156 255 / 30%);
-      border-radius: 18px;
-      background: rgb(139 156 255 / 10%);
-      color: var(--accent);
-      font-size: 26px;
-    }
-
-    .welcome h2 { margin: 0; font-size: clamp(22px, 3vw, 29px); font-weight: 800; letter-spacing: -1px; }
-
-    .welcome p {
-      max-width: 460px;
-      margin: 12px 0 22px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.75;
-    }
-
-    .suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-
-    .suggestion {
-      padding: 9px 12px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--surface);
-      color: #cbd5e5;
-      font-size: 11px;
-      text-align: left;
-    }
-
-    .suggestion:hover { border-color: #45536b; background: var(--surface-hover); }
-
-    .message {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      width: 100%;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .message-avatar {
-      display: grid;
-      width: 30px;
-      height: 30px;
-      flex-shrink: 0;
-      place-items: center;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: var(--surface-raised);
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .message.user .message-avatar { color: var(--success); }
-    .message-content { flex: 1; min-width: 0; padding-top: 3px; }
-    .message-role { margin-bottom: 8px; color: #cbd5e5; font-size: 12px; font-weight: 750; }
-
-    .message-body {
-      color: #d5ddec;
-      font-size: 13px;
-      line-height: 1.8;
-      overflow-wrap: anywhere;
-    }
-
-    .message.user .message-body { color: #e7edf7; }
-    .message-body p { margin: 0 0 12px; }
-    .message-body p:last-child { margin-bottom: 0; }
-    .message-body ul, .message-body ol { padding-left: 22px; }
-    .message-body li { margin: 5px 0; }
-
-    .message-body code:not([class*="language-"]) {
-      padding: 2px 5px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      background: var(--surface);
-      color: #c4ccff;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: .9em;
-    }
-
-    .code-block {
-      overflow: hidden;
-      margin: 14px 0;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: #090c11;
-    }
-
-    .code-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 11px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .code-language { color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; }
-
-    .copy-code {
-      padding: 5px 8px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--surface-raised);
-      color: #cbd5e5;
-      font-size: 10px;
-    }
-
-    .copy-code:hover { background: var(--surface-hover); }
-
-    .code-block pre {
-      overflow-x: auto;
-      margin: 0;
-      padding: 15px;
-      background: transparent !important;
-      font-size: 12px;
-      line-height: 1.7;
-      scrollbar-color: var(--border) transparent;
-    }
-
-    .code-block pre code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-shadow: none !important; }
-
-    .typing-indicator { display: inline-flex; align-items: center; gap: 5px; padding: 4px 0; }
-    .typing-indicator span {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--muted);
-      animation: pulse 1s infinite ease-in-out;
-    }
-
-    .typing-indicator span:nth-child(2) { animation-delay: .15s; }
-    .typing-indicator span:nth-child(3) { animation-delay: .3s; }
-
-    @keyframes pulse {
-      0%, 60%, 100% { opacity: .35; transform: translateY(0); }
-      30% { opacity: 1; transform: translateY(-3px); }
-    }
-
-    .composer-area {
-      padding: 12px clamp(16px, 5vw, 70px) 14px;
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .composer {
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 10px;
-      border: 1px solid #354157;
-      border-radius: 13px;
-      background: var(--bg);
-      box-shadow: var(--shadow);
-    }
-
-    .composer:focus-within { border-color: #6575be; }
-
-    .composer textarea {
-      flex: 1;
-      min-width: 0;
-      min-height: 43px;
-      max-height: 180px;
-      padding: 10px 8px;
-      border: 0;
-      outline: none;
-      background: transparent;
-      color: var(--text);
-      line-height: 1.6;
-      resize: none;
-    }
-
-    .composer textarea::placeholder { color: #6c788c; }
-
-    .send-button {
-      width: 42px;
-      height: 42px;
-      flex-shrink: 0;
-      border: 0;
-      border-radius: 10px;
-      background: var(--accent);
-      color: #101522;
-      font-size: 18px;
-      font-weight: 800;
-    }
-
-    .send-button:hover:not(:disabled) { background: var(--accent-hover); }
-
-    .composer-hint {
-      max-width: 900px;
-      margin: 8px auto 0;
-      color: #738097;
-      font-size: 10px;
-      text-align: center;
-    }
-
-    .statusbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 0 14px;
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      font-size: 10px;
-    }
-
-    .statusbar-left, .statusbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .statusbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    @media (max-width: 900px) {
-      :root { --sidebar-width: 280px; }
-      .messages { padding-right: 22px; padding-left: 22px; }
-      .composer-area { padding-right: 22px; padding-left: 22px; }
-    }
-
-    @media (max-width: 680px) {
-      html, body { height: 100%; min-height: 0; }
-      body { grid-template-rows: 58px minmax(0, 1fr) 25px; }
-      .topbar { padding: 0 12px; }
-      .brand-icon { width: 32px; height: 32px; }
-      .brand-subtitle { display: none; }
-      .local-badge { padding: 6px 8px; font-size: 10px; }
-
-      .workspace {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(0, 40%) minmax(0, 60%);
-      }
-
-      .sidebar { grid-row: 1; border-right: 0; border-bottom: 1px solid var(--border); }
-      .sidebar-heading { padding: 12px 14px 10px; }
-      .sidebar-title { font-size: 15px; }
-      .sidebar-description { display: none; }
-      .sidebar-content { padding: 12px 14px; }
-      .main { grid-row: 2; }
-      .chat-header { min-height: 54px; padding: 9px 13px; }
-      .chat-heading h1 { font-size: 13px; }
-      .messages { gap: 18px; padding: 18px 13px; }
-      .message { gap: 9px; }
-      .message-avatar { width: 27px; height: 27px; }
-      .composer-area { padding: 9px 12px; }
-      .composer-hint { font-size: 9px; }
-      .statusbar { padding: 0 8px; }
-      .statusbar-right { display: none; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        scroll-behavior: auto !important;
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: .01ms !important;
-      }
-    }
+
+    :root{color-scheme:dark;--bg:#0b1020;--panel:#121a2b;--panel2:#0e1626;--border:#29364d;--text:#e7edf7;--muted:#9aabc3;--accent:#7c9cff;--good:#6bd6a2;--bad:#ff8d8d;--warn:#ffd479}
+
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+    button,input,textarea,select{font:inherit}button{border:1px solid var(--border);background:#1b2941;color:var(--text);padding:9px 13px;border-radius:8px;cursor:pointer}button:hover:not(:disabled){border-color:var(--accent);background:#223451}button:disabled{opacity:.45;cursor:not-allowed}input,textarea{width:100%;border:1px solid var(--border);border-radius:8px;background:#091120;color:var(--text);padding:10px}textarea{resize:vertical;min-height:84px}label{display:block;color:var(--muted);font-size:13px;margin:10px 0 5px}.muted{color:var(--muted)}.small{font-size:12px}.status{min-height:22px;color:var(--muted);font-size:13px}.status.success,.topstatus.success{color:var(--good)}.status.error,.topstatus.error{color:var(--bad)}.status.warning,.topstatus.warning{color:var(--warn)}
+
+    select{width:100%;border:1px solid var(--border);border-radius:8px;background:#091120;color:var(--text);padding:10px;margin-bottom:8px}
+
+    header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px}h1{font-size:20px;margin:0}header p{margin:4px 0 0;color:var(--muted);font-size:13px}.layout{display:grid;grid-template-columns:minmax(270px,340px) minmax(0,1fr);gap:16px;padding:16px;max-width:1600px;margin:auto}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}.panel h2{font-size:16px;margin:0 0 8px}.section{border-top:1px solid var(--border);padding-top:16px;margin-top:16px}.row{display:flex;gap:8px;align-items:center}.row>*{min-width:0}.row button{flex-shrink:0}.files{max-height:280px;overflow:auto;margin-top:8px;border:1px solid var(--border);border-radius:8px}.file-row{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-bottom:1px solid #202d42;overflow-wrap:anywhere}.file-row:last-child{border-bottom:0}.file-row input{width:auto;margin-top:5px}.file-row label{margin:0;color:var(--text);font-size:13px;cursor:pointer}.chat{display:flex;flex-direction:column;min-height:420px}.messages{display:flex;flex-direction:column;gap:12px;flex:1;min-height:260px;max-height:52vh;overflow:auto;padding:4px 2px 14px}.message{max-width:92%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere}.message.user{align-self:flex-end;background:#1a2b49}.message.assistant{align-self:flex-start;background:var(--panel2)}.message.system{align-self:center;color:var(--muted);font-size:13px;border-style:dashed}.composer{border-top:1px solid var(--border);padding-top:14px}.composer textarea{min-height:70px}.composer .row{justify-content:space-between;margin-top:8px}.preview{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;overflow:auto;max-height:420px;background:#080e19;border:1px solid var(--border);border-radius:8px;padding:12px;min-height:70px}.note{font-size:12px;color:var(--muted);margin:8px 0 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.danger{border-color:#77444a}.topstatus{padding:8px 24px;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted)}
+
+    @media(max-width:850px){.layout{grid-template-columns:1fr;padding:10px}header{padding:16px}.messages{max-height:45vh}}
+
+/* ---------- Code editor ---------- */
+
+    .editor-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0}
+
+    .editor-toolbar select{flex:1 1 260px;min-width:180px;margin-bottom:0}
+
+    #editor-status{overflow-wrap:anywhere}
+
+    .code-editor{position:relative;height:480px;overflow:hidden;border:1px solid var(--border);border-radius:8px;background:#080e19}
+
+    .code-editor pre,.code-editor textarea{position:absolute;inset:0;box-sizing:border-box;width:100%;height:100%;margin:0;padding:16px;border:0;border-radius:0;font-family:"SFMono-Regular",Consolas,monospace;font-size:13px;font-weight:400;line-height:1.55;letter-spacing:normal;tab-size:4;white-space:pre;overflow:auto}
+
+    .code-editor pre{pointer-events:none;background:transparent}
+
+    .code-editor pre code{display:block;min-height:100%;font:inherit;white-space:inherit}
+
+    .code-editor textarea{z-index:1;resize:none;outline:none;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#fff;overflow:auto}
+
+    .code-editor textarea::selection{background:rgba(100,150,255,.4)}
+
+    .code-editor textarea:focus{box-shadow:inset 0 0 0 1px #7aa7ff}
+
+.settings-panel {
+
+  margin: 20px 0;
+
+  padding: 20px;
+
+  border: 1px solid var(--border-color, #777);
+
+  border-radius: 12px;
+
+}
+
+.settings-heading {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  justify-content: space-between;
+
+  align-items: start;
+
+  gap: 12px;
+
+  margin-bottom: 18px;
+
+}
+
+.settings-heading h2 {
+
+  margin: 0 0 6px;
+
+}
+
+.settings-heading p {
+
+  margin: 0;
+
+  opacity: 0.75;
+
+}
+
+#settings-status {
+
+  font-size: 0.9rem;
+
+  overflow-wrap: anywhere;
+
+}
+
+.settings-grid {
+
+  display: grid;
+
+  grid-template-columns: repeat(
+
+    auto-fit,
+
+    minmax(min(100%, 220px), 1fr)
+
+  );
+
+  gap: 18px;
+
+}
+
+.settings-grid label {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+
+  font-weight: 600;
+
+}
+
+.settings-grid select,
+
+.settings-grid input {
+
+  width: 100%;
+
+  box-sizing: border-box;
+
+}
+
+.settings-grid select {
+
+  padding: 10px;
+
+  border-radius: 6px;
+
+}
+
+.settings-grid small {
+
+  font-weight: 400;
+
+  opacity: 0.75;
+
+  line-height: 1.45;
+
+}
+
+.settings-actions {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 10px;
+
+  margin-top: 20px;
+
+}
+
+.settings-actions button {
+
+  padding: 10px 14px;
+
+  cursor: pointer;
+
+}
+
+.settings-actions button:disabled {
+
+  cursor: wait;
+
+  opacity: 0.6;
+
+}
+
   </style>
+
 </head>
 
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-icon" aria-hidden="true">&lt;/&gt;</div>
-      <div>
-        <div class="brand-name">Offline Coding Assistant</div>
-        <div class="brand-subtitle">Your local development workspace</div>
-      </div>
-    </div>
 
-    <div class="local-badge">
-      <span class="local-dot" aria-hidden="true"></span>
-      Local AI
-    </div>
+  <header>
+
+    <div><h1>Offline AI Assistant</h1><p>FastAPI + Ollama · general chat · local files · optional coding tools</p></div>
+
+    <button id="check-connection" type="button">Check connection</button>
+
   </header>
 
-  <div class="workspace">
-    <aside class="sidebar" aria-label="Project explorer">
-      <div class="sidebar-heading">
-        <div class="eyebrow">Workspace</div>
-        <h2 class="sidebar-title">Project Explorer</h2>
-        <p class="sidebar-description">
-          Load a local project, select files, and ask your AI assistant
-          to analyze your code.
-        </p>
+  <div class="topstatus" id="status" role="status" aria-live="polite">Ready.</div>
+
+  <main class="layout">
+
+    <aside class="panel">
+
+      <h2>Project</h2>
+
+      <label for="project-path">Project folder path</label>
+
+      <div class="row"><input id="project-path" placeholder="/path/to/your/project" autocomplete="off"><button id="select-project" type="button">Load</button></div>
+
+      <p class="status" id="project-status" role="status"></p>
+
+      <div class="section">
+
+        <div class="row" style="justify-content:space-between"><h2>Project files</h2><button id="refresh-files" type="button" disabled>Refresh</button></div>
+
+        <p class="note">Choose one or more files to include in project questions. Proposal generation requires one selected file.</p>
+
+        <div class="files" id="project-files"><p class="muted" style="padding:10px;margin:0">Load a project to list files.</p></div>
+
+        <div class="actions"><button id="select-all-files" type="button" disabled>Select all</button><button id="clear-files" type="button" disabled>Clear selection</button></div>
+
       </div>
 
-      <div class="sidebar-content">
-        <label class="section-label" for="project-path">Project directory</label>
+      <div class="section" id="analysis-section">
 
-        <input
-          class="field"
-          type="text"
-          id="project-path"
-          value="~/OfflineCodingAssistant"
-          placeholder="/absolute/path/to/project"
-          autocomplete="off"
-          spellcheck="false"
-        >
+        <h2>Project analysis</h2>
 
-        <div class="project-controls">
-          <button class="button button-primary" id="load-project" type="button">
-            Load project
-          </button>
-          <button class="button" id="refresh-files" type="button">Refresh</button>
-        </div>
+        <p class="note">Analyzes the files checked above (up to 10). Nothing is modified.</p>
 
-        <p id="project-status" class="status-line" role="status" aria-live="polite">
-          Load a project to get started.
-        </p>
+        <label for="analysis-mode">Analysis mode</label>
 
-        <hr class="sidebar-divider">
+        <select id="analysis-mode">
 
-        <div class="files-heading">
-          <span class="section-label">Project files</span>
-          <span class="count-label" id="file-count">0 files</span>
-        </div>
+          <option value="explain">Explain selected code</option>
 
-        <div class="file-actions">
-          <button class="button button-small" id="select-all-files" type="button">Select all</button>
-          <button class="button button-small" id="clear-files" type="button">Clear selection</button>
-        </div>
+          <option value="debug">Debug an error</option>
 
-        <div id="project-files" class="file-list" aria-label="Project files">
-          <div class="empty-state">Your project files will appear here.</div>
-        </div>
+          <option value="dependencies">Trace file dependencies</option>
 
-        <div class="project-question-area">
-          <label class="section-label" for="project-question">Ask about your project</label>
-          <textarea
-            class="textarea"
-            id="project-question"
-            rows="3"
-            placeholder="Example: Explain how authentication works in this project."
-          ></textarea>
+          <option value="fix">Recommend a fix</option>
 
-          <button
-            class="button button-primary button-full"
-            id="ask-project"
-            type="button"
-            style="margin-top: 8px;"
-          >
-            Ask about selected files
-          </button>
+        </select>
 
-          <div id="project-answer" class="project-answer" aria-live="polite"></div>
-        </div>
+        <label for="analysis-question">Question or error report</label>
 
-        <section class="change-panel" id="change-panel" aria-labelledby="change-heading">
-          <h3 id="change-heading">Propose a Code Change</h3>
+        <textarea id="analysis-question" rows="4" placeholder="Paste an error traceback or ask how the selected files work together."></textarea>
 
-          <p class="change-description">
-            Select exactly one file from the project file list above,
-            then describe the change you want.
-          </p>
+        <div class="actions"><button id="analyze-project" type="button" disabled>Analyze selected files</button></div>
 
-          <div class="selected-file-card">
-            <div class="selected-file-label">Selected file</div>
-            <div id="change-selected-file" class="selected-file-name">No file selected</div>
-          </div>
+        <p class="status" id="analysis-status" role="status" aria-live="polite"></p>
 
-          <label class="section-label" for="change-instruction">Describe the change</label>
-          <textarea
-            class="textarea"
-            id="change-instruction"
-            rows="3"
-            placeholder="Example: Add input validation and clear error messages."
-          ></textarea>
+        <label for="analysis-result">Analysis results</label>
 
-          <button
-            class="button button-primary button-full"
-            id="propose-change"
-            type="button"
-            style="margin-top: 9px;"
-          >
-            Generate Change Preview
-          </button>
+        <pre id="analysis-result" class="preview" style="white-space:pre-wrap;overflow-wrap:anywhere">Results will appear here.</pre>
 
-          <p id="change-status" class="status-line" role="status" aria-live="polite"></p>
-
-          <div class="review-note">
-            <strong>Review only.</strong>
-            The proposal is displayed for inspection. This interface does
-            not apply changes to your source file.
-          </div>
-
-          <div class="preview-toolbar">
-            <h4>Proposed Change</h4>
-            <button class="button button-small" id="copy-change-preview" type="button" disabled>
-              Copy preview
-            </button>
-          </div>
-
-          <pre id="change-preview" class="change-preview" aria-label="Proposed code change preview"></pre>
-        </section>
       </div>
+
+      <div class="section" id="conversation-controls">
+
+        <h2>Conversations</h2>
+
+        <label for="conversation-select">Conversation</label>
+
+        <select id="conversation-select"></select>
+
+        <button id="new-conversation" type="button">+ New Chat</button>
+
+        <button id="rename-conversation" type="button">Rename</button>
+
+        <button id="delete-conversation" type="button">Delete Chat</button>
+
+        <p class="status" id="conversation-status" role="status"></p>
+
+      </div>
+
+      <div class="section">
+
+        <h2>Ask about this project</h2>
+
+        <label for="project-question">Question</label>
+
+        <textarea id="project-question" placeholder="How does authentication work?" rows="3"></textarea>
+
+        <div class="actions"><button id="ask-project" type="button" disabled>Ask selected files</button></div>
+
+        <p class="status" id="project-answer-status" role="status"></p>
+
+        <pre id="project-answer" class="preview" style="white-space:pre-wrap">Answers will appear here.</pre>
+
+      </div>
+
     </aside>
 
-    <main class="main">
-      <div class="chat-header">
-        <div class="chat-heading">
-          <h1>AI Chat</h1>
-          <p id="chat-subtitle">Ask questions. Build. Debug. Learn.</p>
+    <section class="panel">
+
+      <div class="chat">
+
+        <h2>Chat with your local AI</h2>
+
+        <div id="messages" class="messages" aria-live="polite"><div class="message system">Ready. Ask a question or give the assistant a task.</div></div>
+
+        <div class="composer">
+
+          <label for="chat-input">Message</label>
+
+          <textarea id="chat-input" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)"></textarea>
+
+          <div class="row"><span class="muted small">Your message is sent to your local AI server.</span><button id="send-message" type="button">Send</button></div>
+
         </div>
 
-        <div class="chat-header-actions">
-          <button class="button button-small" id="clear-chat" type="button">Clear chat</button>
-        </div>
       </div>
 
-      <section id="messages" class="messages" aria-label="Conversation" aria-live="polite">
-        <div class="welcome" id="welcome">
-          <div class="welcome-icon" aria-hidden="true">&lt;/&gt;</div>
-          <h2>Your local coding workspace.</h2>
-          <p>
-            Ask coding questions, troubleshoot errors, understand your project,
-            or generate a proposed code change. Your frontend communicates with
-            your local FastAPI backend.
-          </p>
+      <div class="section" id="code-editor-panel">
 
-          <div class="suggestions">
-            <button class="suggestion" type="button" data-prompt="Explain how a REST API works and show me a Python example.">Explain an API</button>
-            <button class="suggestion" type="button" data-prompt="Help me debug a Python error. Explain your debugging process step by step.">Debug my code</button>
-            <button class="suggestion" type="button" data-prompt="Help me write unit tests for a Python function using pytest.">Write unit tests</button>
-            <button class="suggestion" type="button" data-prompt="Explain clean architecture and how I can organize a maintainable software project.">Software architecture</button>
-          </div>
+        <h2>Code editor</h2>
+
+        <p class="note">Edit a project file locally. Saving creates a backup and checks that the file has not changed since it was loaded.</p>
+
+        <div class="editor-toolbar">
+
+          <select id="editor-file" aria-label="File to edit">
+
+            <option value="">Load project files first</option>
+
+          </select>
+
+          <button id="refresh-editor-files" type="button">Refresh file list</button>
+
+          <button id="load-editor-file" type="button">Load</button>
+
+          <button id="save-editor-file" type="button">Save</button>
+
+          <button id="reset-editor-file" type="button">Reset</button>
+
         </div>
-      </section>
 
-      <div class="composer-area">
-        <form id="chat-form" class="composer">
-          <textarea id="prompt" rows="1" placeholder="Ask your local AI assistant anything..." aria-label="Message" required></textarea>
-          <button class="send-button" id="send" type="submit" aria-label="Send message" title="Send message">↑</button>
-        </form>
-        <div class="composer-hint">Enter to send · Shift + Enter for a new line</div>
+        <p class="status" id="editor-status" role="status" aria-live="polite">Select a project and refresh the file list.</p>
+
+        <div id="code-editor" class="code-editor">
+
+          <pre id="editor-highlight-layer" aria-hidden="true"><code id="editor-highlight" class="language-none"></code></pre>
+
+          <textarea
+
+            id="editor-text"
+
+            aria-label="Editable source code"
+
+            spellcheck="false"
+
+            autocomplete="off"
+
+            autocapitalize="off"
+
+            wrap="off"
+
+            placeholder="Load a project file to start editing..."
+
+          ></textarea>
+
+        </div>
+
       </div>
-    </main>
-  </div>
 
-  <footer class="statusbar">
-    <div class="statusbar-left">
-      <span class="local-dot" aria-hidden="true"></span>
-      <span id="status">Ready</span>
-    </div>
-    <div class="statusbar-right">
-      <span id="model-status">Connected through your local backend</span>
-    </div>
-  </footer>
+      <div class="section">
 
-  <script src="/static/prism.js"></script>
+        <h2>Propose a code change</h2>
+
+        <p class="note">Select exactly one project file, describe the edit, and generate a diff. Nothing is written to disk until you approve it.</p>
+
+        <label for="change-instruction">Requested change</label>
+
+        <textarea id="change-instruction" placeholder="For example: Add input validation and return a clear error for invalid values." rows="3"></textarea>
+
+        <div class="actions"><button id="propose-change" type="button" disabled>Generate proposal</button><button id="copy-change-preview" type="button" disabled>Copy diff</button></div>
+
+        <p class="status" id="change-status" role="status" aria-live="polite"></p>
+
+        <pre id="change-preview" class="preview">The proposed diff will appear here.</pre>
+
+        <div class="section">
+
+          <h2>Review and apply</h2>
+
+          <p class="note">Inspect the diff before approving. The backend must validate the proposal and create a backup before writing the file.</p>
+
+          <button id="apply-change" class="danger" type="button" disabled>Approve and apply change</button>
+
+          <p class="status" id="apply-status" role="status" aria-live="polite"></p>
+
+        </div>
+
+      </div>
+
+      <div class="settings-heading">
+
+        <div>
+
+          <h2>AI Settings</h2>
+
+          <p>Configure your local coding assistant.</p>
+
+        </div>
+
+        <span id="settings-status" role="status">
+
+          Loading settings...
+
+        </span>
+
+      </div>
+
+      <div class="settings-grid">
+
+        <label for="settings-model">
+
+          Local model
+
+          <select id="settings-model">
+
+            <option value="qwen2.5-coder:7b-instruct">
+
+              qwen2.5-coder:7b-instruct
+
+            </option>
+
+          </select>
+
+        </label>
+
+        <label for="settings-temperature">
+
+          Temperature
+
+          <output id="temperature-value">0.2</output>
+
+          <input
+
+            id="settings-temperature"
+
+            type="range"
+
+            min="0"
+
+            max="2"
+
+            step="0.1"
+
+            value="0.2"
+
+          />
+
+          <small>Lower is more predictable; higher is more varied.</small>
+
+        </label>
+
+        <label for="settings-max-tokens">
+
+          Maximum output tokens
+
+          <select id="settings-max-tokens">
+
+            <option value="512">512</option>
+
+            <option value="1024">1,024</option>
+
+            <option value="2048" selected>2,048</option>
+
+            <option value="4096">4,096</option>
+
+            <option value="8192">8,192</option>
+
+          </select>
+
+          <small>Higher limits may increase response time and memory use.</small>
+
+        </label>
+
+      </div>
+
+      <div class="settings-actions">
+
+        <button id="save-settings" type="button">
+
+          Save settings
+
+        </button>
+
+        <button id="reset-settings" type="button">
+
+          Reset defaults
+
+        </button>
+
+        <button id="refresh-models" type="button">
+
+          Refresh local models
+
+        </button>
+
+      </div>
+
+    </section>
+
+  </main>
 
   <script>
+
     "use strict";
 
-    // DOM references
-    const messagesContainer = document.getElementById("messages");
-    const promptInput = document.getElementById("prompt");
-    const sendButton = document.getElementById("send");
-    const statusElement = document.getElementById("status");
+// If your FastAPI server uses a different address, change this value.
 
-    const projectPathInput = document.getElementById("project-path");
-    const loadProjectButton = document.getElementById("load-project");
-    const refreshFilesButton = document.getElementById("refresh-files");
-    const projectStatus = document.getElementById("project-status");
-    const projectFilesContainer = document.getElementById("project-files");
-    const fileCount = document.getElementById("file-count");
-    const projectQuestionInput = document.getElementById("project-question");
-    const askProjectButton = document.getElementById("ask-project");
-    const projectAnswer = document.getElementById("project-answer");
+    const API_BASE = "";
 
-    const changeSelectedFile = document.getElementById("change-selected-file");
-    const changeInstruction = document.getElementById("change-instruction");
-    const proposeChangeButton = document.getElementById("propose-change");
-    const changeStatus = document.getElementById("change-status");
-    const changePreview = document.getElementById("change-preview");
-    const copyChangePreviewButton = document.getElementById("copy-change-preview");
+    const $ = (id) => document.getElementById(id);
 
-    // State
-    let conversationHistory = [];
-    let loadedProject = null;
+    const statusElement = $("status");
+
+    const projectPathInput = $("project-path");
+
+    const selectProjectButton = $("select-project");
+
+    const refreshFilesButton = $("refresh-files");
+
+    const projectFilesElement = $("project-files");
+
+    const projectQuestionInput = $("project-question");
+
+    const askProjectButton = $("ask-project");
+
+    const projectAnswerStatus = $("project-answer-status");
+
+    const projectAnswer = $("project-answer");
+
+    const messagesElement = $("messages");
+
+    const chatInput = $("chat-input");
+
+    const sendMessageButton = $("send-message");
+
+    const proposeChangeButton = $("propose-change");
+
+    const changeInstructionInput = $("change-instruction");
+
+    const changePreview = $("change-preview");
+
+    const changeStatus = $("change-status");
+
+    const copyChangePreviewButton = $("copy-change-preview");
+
+    const applyChangeButton = $("apply-change");
+
+    const applyStatus = $("apply-status");
+
+    const analyzeProjectButton = $("analyze-project");
+
+    let currentProjectPath = "";
+
+    let currentFiles = [];
+
+    let currentCodeProposalId = null;
+
     let isChatBusy = false;
-    let isProjectBusy = false;
+
     let isProposalBusy = false;
 
-    // API helpers
-    async function readJsonResponse(response) {
-      const rawText = await response.text();
-      let data;
+    let isApplying = false;
 
-      try {
-        data = rawText ? JSON.parse(rawText) : {};
-      } catch {
-        throw new Error("The server returned an invalid response. Check the FastAPI endpoint.");
-      }
+    let isAnalyzing = false;
 
-      if (!response.ok) {
-        const detail = data.detail || data.error || data.message;
-        throw new Error(typeof detail === "string" ? detail : `Request failed: HTTP ${response.status}.`);
-      }
+    function setStatus(message, type = "") {
 
-      return data;
-    }
-
-    async function apiGet(url) {
-      return readJsonResponse(await fetch(url, {
-        method: "GET",
-        headers: { "Accept": "application/json" }
-      }));
-    }
-
-    async function apiPost(url, body) {
-      return readJsonResponse(await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(body)
-      }));
-    }
-
-    // Status helpers
-    function setStatus(message) {
       statusElement.textContent = message;
+
+      statusElement.className = "topstatus" + (type ? " " + type : "");
+
     }
 
     function setProjectStatus(message, type = "") {
-      projectStatus.textContent = message;
-      projectStatus.className = "status-line" + (type ? " " + type : "");
+
+      $("project-status").textContent = message;
+
+      $("project-status").className = "status" + (type ? " " + type : "");
+
     }
 
     function setChangeStatus(message, type = "") {
+
       changeStatus.textContent = message;
-      changeStatus.className = "status-line" + (type ? " " + type : "");
+
+      changeStatus.className = "status" + (type ? " " + type : "");
+
     }
 
-    function scrollMessagesToBottom() {
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    function setApplyStatus(message, type = "") {
+
+      applyStatus.textContent = message;
+
+      applyStatus.className = "status" + (type ? " " + type : "");
+
     }
 
-    // Clipboard helper with fallback
-    async function copyText(text) {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        return;
+    async function readJsonResponse(response) {
+
+      const text = await response.text();
+
+      let data = {};
+
+      if (text) {
+
+        try { data = JSON.parse(text); }
+
+        catch { throw new Error("Server returned non-JSON data: " + text.slice(0, 300)); }
+
       }
 
-      const temporary = document.createElement("textarea");
-      temporary.value = text;
-      temporary.style.position = "fixed";
-      temporary.style.opacity = "0";
-      document.body.appendChild(temporary);
-      temporary.select();
+      if (!response.ok) {
 
-      const copied = document.execCommand("copy");
-      temporary.remove();
+        throw new Error(data.detail || data.error || data.message || `HTTP ${response.status}`);
 
-      if (!copied) {
-        throw new Error("Clipboard access is unavailable.");
       }
+
+      return data;
+
     }
 
-    // Safe message rendering
-    function renderMessageContent(container, text) {
-      const parts = text.split(/```([^\n`]*)\n([\s\S]*?)```/g);
+    async function apiGet(path) {
 
-      for (let i = 0; i < parts.length;) {
-        const plainText = parts[i] ?? "";
-        const language = (parts[i + 1] ?? "").trim().toLowerCase();
-        const code = parts[i + 2];
+      return readJsonResponse(await fetch(API_BASE + path, { method: "GET", headers: { "Accept": "application/json" } }));
 
-        if (plainText) {
-          const paragraph = document.createElement("p");
-          paragraph.textContent = plainText;
-          container.appendChild(paragraph);
-        }
+    }
 
-        if (code !== undefined) {
-          const block = document.createElement("div");
-          block.className = "code-block";
+    async function apiPost(path, body) {
 
-          const toolbar = document.createElement("div");
-          toolbar.className = "code-toolbar";
+      return readJsonResponse(await fetch(API_BASE + path, {
 
-          const languageLabel = document.createElement("span");
-          languageLabel.className = "code-language";
-          languageLabel.textContent = language || "code";
+        method: "POST",
 
-          const copyButton = document.createElement("button");
-          copyButton.className = "copy-code";
-          copyButton.type = "button";
-          copyButton.textContent = "Copy code";
-          copyButton.addEventListener("click", async () => {
-            try {
-              await copyText(code);
-              copyButton.textContent = "Copied!";
-            } catch {
-              copyButton.textContent = "Copy failed";
-            }
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
 
-            setTimeout(() => { copyButton.textContent = "Copy code"; }, 1500);
+        body: JSON.stringify(body)
+
+      }));
+
+    }
+
+    function getSelectedPaths() {
+
+      return Array.from(projectFilesElement.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
+
+    }
+
+    function updateActionButtons() {
+
+      const selected = getSelectedPaths();
+
+      askProjectButton.disabled = !currentProjectPath || selected.length === 0;
+
+      analyzeProjectButton.disabled = !currentProjectPath || selected.length === 0 || isAnalyzing;
+
+      proposeChangeButton.disabled = !currentProjectPath || selected.length !== 1 || isProposalBusy;
+
+      if (selected.length !== 1) {
+
+        currentCodeProposalId = null;
+
+        applyChangeButton.disabled = true;
+
+      }
+
+    }
+
+    function renderFiles(files) {
+
+      currentFiles = files;
+
+      projectFilesElement.replaceChildren();
+
+      if (!files.length) {
+
+        const empty = document.createElement("p");
+
+        empty.className = "muted";
+
+        empty.style.padding = "10px";
+
+        empty.textContent = "No files returned for this project.";
+
+        projectFilesElement.appendChild(empty);
+
+      } else {
+
+files.forEach((item, index) => {
+
+          const path = typeof item === "string" ? item : (item.path || item.name || item.file || "");
+
+          if (!path) return;
+
+          const row = document.createElement("div");
+
+          row.className = "file-row";
+
+          const checkbox = document.createElement("input");
+
+          checkbox.type = "checkbox";
+
+          checkbox.id = "project-file-" + index;
+
+          checkbox.value = path;
+
+          checkbox.addEventListener("change", () => {
+
+            currentCodeProposalId = null;
+
+            applyChangeButton.disabled = true;
+
+            setApplyStatus("Selection changed. Generate a new proposal before applying.");
+
+            updateActionButtons();
+
           });
 
-          const pre = document.createElement("pre");
-          const codeElement = document.createElement("code");
-          const safeLanguage = language.replace(/[^a-z0-9_-]/g, "");
+          const label = document.createElement("label");
 
-          if (safeLanguage) {
-            codeElement.className = `language-${safeLanguage}`;
-          }
+          label.htmlFor = checkbox.id;
 
-          codeElement.textContent = code;
-          pre.appendChild(codeElement);
-          toolbar.append(languageLabel, copyButton);
-          block.append(toolbar, pre);
-          container.appendChild(block);
+          label.textContent = path;
 
-          if (window.Prism && typeof window.Prism.highlightElement === "function") {
-            try { window.Prism.highlightElement(codeElement); } catch {}
-          }
+          row.append(checkbox, label);
 
-          i += 3;
-        } else {
-          break;
-        }
-      }
+          projectFilesElement.appendChild(row);
 
-      if (!container.hasChildNodes()) {
-        const paragraph = document.createElement("p");
-        paragraph.textContent = text;
-        container.appendChild(paragraph);
-      }
-    }
-
-    function appendMessage(role, content, options = {}) {
-      const welcome = document.getElementById("welcome");
-      if (welcome) welcome.remove();
-
-      const message = document.createElement("article");
-      message.className = `message ${role}`;
-
-      const avatar = document.createElement("div");
-      avatar.className = "message-avatar";
-      avatar.setAttribute("aria-hidden", "true");
-      avatar.textContent = role === "user" ? "You" : "AI";
-
-      const contentContainer = document.createElement("div");
-      contentContainer.className = "message-content";
-
-      const roleLabel = document.createElement("div");
-      roleLabel.className = "message-role";
-      roleLabel.textContent = role === "user" ? "You" : "Assistant";
-
-      const body = document.createElement("div");
-      body.className = "message-body";
-
-      contentContainer.append(roleLabel, body);
-      message.append(avatar, contentContainer);
-      messagesContainer.appendChild(message);
-
-      if (options.typing) {
-        const indicator = document.createElement("div");
-        indicator.className = "typing-indicator";
-        indicator.setAttribute("aria-label", "Assistant is thinking");
-
-        for (let i = 0; i < 3; i++) {
-          indicator.appendChild(document.createElement("span"));
-        }
-
-        body.appendChild(indicator);
-      } else {
-        renderMessageContent(body, String(content ?? ""));
-      }
-
-      scrollMessagesToBottom();
-      return message;
-    }
-
-    function showWelcomeIfEmpty() {
-      if (conversationHistory.length !== 0) return;
-
-      messagesContainer.replaceChildren();
-
-      const welcome = document.createElement("div");
-      welcome.className = "welcome";
-      welcome.id = "welcome";
-
-      const icon = document.createElement("div");
-      icon.className = "welcome-icon";
-      icon.textContent = "</>";
-
-      const heading = document.createElement("h2");
-      heading.textContent = "Your local coding workspace.";
-
-      const description = document.createElement("p");
-      description.textContent =
-        "Ask coding questions, troubleshoot errors, understand your project, " +
-        "or generate a proposed code change. Your frontend communicates with " +
-        "your local FastAPI backend.";
-
-      const suggestions = document.createElement("div");
-      suggestions.className = "suggestions";
-
-      const promptSuggestions = [
-        ["Explain an API", "Explain how a REST API works and show me a Python example."],
-        ["Debug my code", "Help me debug a Python error. Explain your debugging process step by step."],
-        ["Write unit tests", "Help me write unit tests for a Python function using pytest."],
-        ["Software architecture", "Explain clean architecture and how I can organize a maintainable software project."]
-      ];
-
-      for (const [label, text] of promptSuggestions) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "suggestion";
-        button.textContent = label;
-        button.dataset.prompt = text;
-        suggestions.appendChild(button);
-      }
-
-      welcome.append(icon, heading, description, suggestions);
-      messagesContainer.appendChild(welcome);
-    }
-
-    // Chat
-    async function loadHistory() {
-      try {
-        const data = await apiGet("/history");
-        const messages = Array.isArray(data.messages) ? data.messages : [];
-
-        conversationHistory = messages
-          .filter(item =>
-            item &&
-            ["user", "assistant"].includes(item.role) &&
-            typeof item.content === "string"
-          )
-          .map(item => ({ role: item.role, content: item.content }));
-
-        messagesContainer.replaceChildren();
-
-        if (conversationHistory.length === 0) {
-          showWelcomeIfEmpty();
-        } else {
-          conversationHistory.forEach(item => appendMessage(item.role, item.content));
-        }
-
-        setStatus("Chat history loaded");
-      } catch (error) {
-        showWelcomeIfEmpty();
-        setStatus("Ready");
-        console.warn("Could not load chat history:", error.message);
-      }
-    }
-
-    async function sendChatMessage(messageText) {
-      const message = messageText.trim();
-      if (!message || isChatBusy) return;
-
-      isChatBusy = true;
-      sendButton.disabled = true;
-      promptInput.disabled = true;
-      setStatus("Waiting for local AI...");
-
-      appendMessage("user", message);
-
-      const historyForRequest = [
-        ...conversationHistory,
-        { role: "user", content: message }
-      ];
-
-      const typingMessage = appendMessage("assistant", "", { typing: true });
-
-      try {
-        const data = await apiPost("/chat", {
-          message,
-          history: historyForRequest
         });
 
-        if (typeof data.reply !== "string") {
-          throw new Error("The /chat endpoint must return a string field named 'reply'.");
+      }
+
+      $("select-all-files").disabled = !files.length;
+
+      $("clear-files").disabled = !files.length;
+
+      refreshFilesButton.disabled = !currentProjectPath;
+
+      updateActionButtons();
+
+// Keep the code editor's file dropdown in sync (defined in the editor script below).
+
+      window.refreshEditorFileList?.({ quiet: true });
+
+    }
+
+    function addMessage(role, text) {
+
+      const message = document.createElement("div");
+
+      message.className = "message " + role;
+
+      message.textContent = text;
+
+      messagesElement.appendChild(message);
+
+      messagesElement.scrollTop = messagesElement.scrollHeight;
+
+    }
+
+    function extractText(data, preferredKeys) {
+
+// Prefer common plain-text response fields so the chat displays the answer,
+
+// not the entire JSON response object.
+
+      for (const key of preferredKeys) {
+
+        if (typeof data?.[key] === "string" && data[key].trim()) return data[key];
+
+      }
+
+// Support APIs that wrap the result in an object such as {data:{response:"..."}}.
+
+      for (const wrapper of ["data", "result", "output", "message"]) {
+
+        const nested = data?.[wrapper];
+
+        if (nested && typeof nested === "object") {
+
+          for (const key of ["response", "answer", "text", "content", "reply", "message", "generated_text"]) {
+
+            if (typeof nested[key] === "string" && nested[key].trim()) return nested[key];
+
+          }
+
         }
 
-        typingMessage.remove();
-        conversationHistory.push(
-          { role: "user", content: message },
-          { role: "assistant", content: data.reply }
-        );
+      }
 
-        appendMessage("assistant", data.reply);
-        setStatus("Ready");
+      if (typeof data === "string") return data;
+
+      return JSON.stringify(data, null, 2);
+
+    }
+
+    async function checkConnection() {
+
+      setStatus("Checking local API…");
+
+      try {
+
+// FastAPI commonly exposes /health; if unavailable, the message is explicit.
+
+        const data = await apiGet("/health");
+
+        setStatus("Connected to local API" + (data.model ? " · model: " + data.model : ""), "success");
+
       } catch (error) {
-        typingMessage.remove();
-        appendMessage("assistant", "I couldn't complete the request.\n\n" + error.message);
-        setStatus("Chat request failed");
-      } finally {
-        isChatBusy = false;
-        sendButton.disabled = false;
-        promptInput.disabled = false;
-        promptInput.focus();
-      }
-    }
 
-    document.getElementById("chat-form").addEventListener("submit", async event => {
-      event.preventDefault();
+        setStatus("Could not check /health: " + error.message + " (The server may not expose a /health route.)", "warning");
 
-      const message = promptInput.value.trim();
-      if (!message) return;
-
-      promptInput.value = "";
-      autoResizePrompt();
-      await sendChatMessage(message);
-    });
-
-    promptInput.addEventListener("keydown", event => {
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        document.getElementById("chat-form").requestSubmit();
-      }
-    });
-
-    function autoResizePrompt() {
-      promptInput.style.height = "auto";
-      promptInput.style.height = Math.min(promptInput.scrollHeight, 180) + "px";
-    }
-
-    promptInput.addEventListener("input", autoResizePrompt);
-
-    document.getElementById("clear-chat").addEventListener("click", () => {
-      if (isChatBusy) return;
-
-      conversationHistory = [];
-      showWelcomeIfEmpty();
-      setStatus("Chat cleared");
-
-      // This clears the current browser conversation only.
-      // Clear server-side history separately if your backend persists it.
-    });
-
-    messagesContainer.addEventListener("click", event => {
-      const button = event.target.closest("[data-prompt]");
-      if (!button || isChatBusy) return;
-
-      promptInput.value = button.dataset.prompt || "";
-      autoResizePrompt();
-      promptInput.focus();
-    });
-
-    // Project loading and file selection
-    async function loadProjectFiles() {
-      const data = await apiGet("/project/files");
-      const files = Array.isArray(data.files) ? data.files : [];
-
-      projectFilesContainer.replaceChildren();
-
-      for (const file of files) {
-        if (typeof file !== "string" || !file.trim()) continue;
-
-        const label = document.createElement("label");
-        label.className = "file-item";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "project-file-checkbox";
-        checkbox.value = file;
-        checkbox.setAttribute("aria-label", `Select ${file}`);
-
-        const name = document.createElement("span");
-        name.className = "file-name";
-        name.textContent = file;
-
-        label.append(checkbox, name);
-        projectFilesContainer.appendChild(label);
       }
 
-      if (files.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "empty-state";
-        empty.textContent = "No files were returned for this project.";
-        projectFilesContainer.appendChild(empty);
-      }
-
-      const count = projectFilesContainer.querySelectorAll(".project-file-checkbox").length;
-      fileCount.textContent = `${count} ${count === 1 ? "file" : "files"}`;
-      updateSelectedFileIndicator();
     }
 
     async function loadProject() {
+
       const path = projectPathInput.value.trim();
 
-      if (!path) {
-        setProjectStatus("Enter a project directory first.", "error");
-        return;
-      }
+      if (!path) { setProjectStatus("Enter a project folder path first.", "error"); return; }
 
-      loadProjectButton.disabled = true;
-      refreshFilesButton.disabled = true;
-      setProjectStatus("Loading project...");
-      setStatus("Loading project...");
+      selectProjectButton.disabled = true;
+
+      setProjectStatus("Loading project…");
 
       try {
-        const data = await apiPost("/project/select", { path });
-        loadedProject = data.project ?? data.path ?? path;
 
-        projectAnswer.textContent = "";
-        changePreview.textContent = "";
-        copyChangePreviewButton.disabled = true;
-        setChangeStatus("");
+// Expected backend contract: POST /project/select with {path}.
+
+        const selected = await apiPost("/project/select", { path });
+
+        currentProjectPath = selected.path || selected.project_path || path;
+
+        currentCodeProposalId = null;
+
+        applyChangeButton.disabled = true;
+
+        setApplyStatus("");
 
         await loadProjectFiles();
 
-        setProjectStatus("Project loaded successfully.", "success");
-        setStatus("Project ready");
+        setProjectStatus("Project loaded: " + currentProjectPath, "success");
+
+        setStatus("Project ready.", "success");
+
       } catch (error) {
-        loadedProject = null;
-        projectFilesContainer.replaceChildren();
-        fileCount.textContent = "0 files";
-        updateSelectedFileIndicator();
-        setProjectStatus(error.message, "error");
-        setStatus("Project loading failed");
+
+        currentProjectPath = "";
+
+        renderFiles([]);
+
+        setProjectStatus("Could not load project: " + error.message, "error");
+
       } finally {
-        loadProjectButton.disabled = false;
-        refreshFilesButton.disabled = false;
+
+        selectProjectButton.disabled = false;
+
       }
+
     }
 
-    document.getElementById("load-project").addEventListener("click", loadProject);
+    async function loadProjectFiles() {
 
-    projectPathInput.addEventListener("keydown", event => {
-      if (event.key === "Enter") loadProject();
-    });
-
-    refreshFilesButton.addEventListener("click", async () => {
-      if (!loadedProject) {
-        setProjectStatus("Load a project before refreshing files.", "warning");
-        return;
-      }
+      if (!currentProjectPath) return;
 
       refreshFilesButton.disabled = true;
 
       try {
-        await loadProjectFiles();
-        setProjectStatus("File list refreshed.", "success");
-      } catch (error) {
-        setProjectStatus(error.message, "error");
+
+// Expected backend contract: GET /project/files; files may be strings or objects with a path.
+
+        const data = await apiGet("/project/files");
+
+        const files = Array.isArray(data) ? data : (data.files || data.paths || data.items || []);
+
+        if (!Array.isArray(files)) throw new Error("The /project/files response did not contain a files array.");
+
+        renderFiles(files);
+
       } finally {
-        refreshFilesButton.disabled = false;
-      }
-    });
 
-    function getSelectedProjectFiles() {
-      return Array.from(
-        projectFilesContainer.querySelectorAll('input[type="checkbox"]:checked')
-      ).map(checkbox => checkbox.value || checkbox.dataset.path).filter(Boolean);
+        refreshFilesButton.disabled = !currentProjectPath;
+
+      }
+
     }
 
-    function updateSelectedFileIndicator() {
-      const selected = getSelectedProjectFiles();
+    async function sendChatMessage() {
 
-      if (selected.length === 1) {
-        changeSelectedFile.textContent = selected[0];
-      } else if (selected.length === 0) {
-        changeSelectedFile.textContent = "No file selected";
-      } else {
-        changeSelectedFile.textContent = `${selected.length} files selected — select exactly one`;
+      const message = chatInput.value.trim();
+
+      if (!message || isChatBusy) return;
+
+      isChatBusy = true;
+
+      sendMessageButton.disabled = true;
+
+// Remember which conversation this message belongs to.
+
+      const conversationId = window.getActiveConversationId?.() ?? null;
+
+      addMessage("user", message);
+
+      chatInput.value = "";
+
+      setStatus("Thinking…");
+
+      try {
+
+        const data = await apiPost("/chat", {
+
+          message,
+
+          conversation_id: conversationId
+
+        });
+
+        const answer = extractText(data, ["response", "answer", "reply", "text", "content", "generated_text", "output", "message"]);
+
+// Only draw the reply if the user is still viewing that conversation.
+
+// Otherwise it is already saved and will appear when they switch back.
+
+        if (window.getActiveConversationId?.() === conversationId) {
+
+          addMessage("assistant", answer);
+
+        }
+
+        setStatus("Connected to local AI", "success");
+
+// Pick up the new title and updated sort order.
+
+        window.refreshConversationList?.().catch(() => {});
+
+      } catch (error) {
+
+        addMessage("system", "Connection error: " + error.message);
+
+        setStatus("Connection error: " + error.message, "error");
+
+      } finally {
+
+        isChatBusy = false;
+
+        sendMessageButton.disabled = false;
+
+        chatInput.focus();
+
       }
+
     }
 
-    document.getElementById("select-all-files").addEventListener("click", () => {
-      projectFilesContainer.querySelectorAll('input[type="checkbox"]').forEach(input => {
-        input.checked = true;
-      });
-      updateSelectedFileIndicator();
-    });
+    async function askProject() {
 
-    document.getElementById("clear-files").addEventListener("click", () => {
-      projectFilesContainer.querySelectorAll('input[type="checkbox"]').forEach(input => {
-        input.checked = false;
-      });
-      updateSelectedFileIndicator();
-    });
-
-    projectFilesContainer.addEventListener("change", event => {
-      if (event.target.matches('input[type="checkbox"]')) {
-        updateSelectedFileIndicator();
-      }
-    });
-
-    // Ask about selected project files
-    async function askAboutProject() {
       const question = projectQuestionInput.value.trim();
-      const selectedFiles = getSelectedProjectFiles();
 
-      if (!loadedProject) {
-        setProjectStatus("Load a project first.", "warning");
+      const selectedFiles = getSelectedPaths();
+
+      if (!question) { projectAnswerStatus.textContent = "Enter a question first."; return; }
+
+      if (!selectedFiles.length) { projectAnswerStatus.textContent = "Select at least one file."; return; }
+
+      askProjectButton.disabled = true;
+
+      projectAnswerStatus.textContent = "Analyzing selected files…";
+
+      projectAnswerStatus.className = "status";
+
+      projectAnswer.textContent = "";
+
+      try {
+
+// Expected backend contract: POST /project/ask with {question, files}.
+
+        const data = await apiPost("/project/ask", { question, files: selectedFiles });
+
+        projectAnswer.textContent = extractText(data, ["answer", "response", "result", "text"]);
+
+        projectAnswerStatus.textContent = "Answer ready.";
+
+        projectAnswerStatus.className = "status success";
+
+      } catch (error) {
+
+        projectAnswerStatus.textContent = "Project question failed: " + error.message;
+
+        projectAnswerStatus.className = "status error";
+
+      } finally {
+
+        updateActionButtons();
+
+      }
+
+    }
+
+    async function analyzeProject() {
+
+      const analysisStatus = $("analysis-status");
+
+      const analysisResult = $("analysis-result");
+
+      const question = $("analysis-question").value.trim();
+
+      const selectedFiles = getSelectedPaths();
+
+      if (selectedFiles.length === 0) {
+
+        analysisStatus.textContent = "Select at least one project file.";
+
+        analysisStatus.className = "status error";
+
         return;
+
+      }
+
+      if (selectedFiles.length > 10) {
+
+        analysisStatus.textContent = "Select no more than 10 files.";
+
+        analysisStatus.className = "status error";
+
+        return;
+
       }
 
       if (!question) {
-        projectAnswer.textContent = "Enter a question about your project.";
+
+        analysisStatus.textContent = "Enter a question or error report.";
+
+        analysisStatus.className = "status error";
+
         return;
+
       }
 
-      if (selectedFiles.length === 0) {
-        projectAnswer.textContent = "Select at least one project file.";
-        return;
-      }
+      isAnalyzing = true;
 
-      if (isProjectBusy) return;
+      analyzeProjectButton.disabled = true;
 
-      isProjectBusy = true;
-      askProjectButton.disabled = true;
-      askProjectButton.textContent = "Analyzing...";
-      projectAnswer.textContent = "Analyzing the selected files...";
+      analysisResult.textContent = "";
+
+      analysisStatus.textContent = "Analyzing selected files locally…";
+
+      analysisStatus.className = "status";
 
       try {
-        const data = await apiPost("/project/ask", {
+
+// Expected backend contract: POST /project/analyze with {mode, question, files} -> {reply}.
+
+        const data = await apiPost("/project/analyze", {
+
+          mode: $("analysis-mode").value,
+
           question,
+
           files: selectedFiles
+
         });
 
-        const answer = data.reply ?? data.answer;
-        if (typeof answer !== "string") {
-          throw new Error("The /project/ask endpoint must return 'reply' or 'answer'.");
-        }
+        analysisResult.textContent = extractText(data, ["reply", "answer", "response", "result", "text"]);
 
-        projectAnswer.textContent = answer;
-        setProjectStatus("Project analysis completed.", "success");
+        analysisStatus.textContent = "Analysis complete. No project files were modified.";
+
+        analysisStatus.className = "status success";
+
       } catch (error) {
-        projectAnswer.textContent = "Could not analyze the project: " + error.message;
-        setProjectStatus("Project analysis failed.", "error");
+
+        analysisStatus.textContent = "Analysis failed: " + error.message;
+
+        analysisStatus.className = "status error";
+
       } finally {
-        isProjectBusy = false;
-        askProjectButton.disabled = false;
-        askProjectButton.textContent = "Ask about selected files";
+
+        isAnalyzing = false;
+
+        updateActionButtons();
+
       }
+
     }
 
-    askProjectButton.addEventListener("click", askAboutProject);
+    async function proposeChange() {
 
-    // ---------------------------------------------------------
-    // PROPOSE A CODE CHANGE
-    // This is the integrated version of your supplied script.
-    // Uses POST /project/propose with { path, instruction }.
-    // Expects a JSON response containing { proposal: "..." }.
-    // ---------------------------------------------------------
+      const selectedPaths = getSelectedPaths();
 
-    proposeChangeButton.addEventListener("click", async () => {
-      if (isProposalBusy) return;
+      const instruction = changeInstructionInput.value.trim();
 
-      const selected = Array.from(
-        projectFilesContainer.querySelectorAll('input[type="checkbox"]:checked')
-      );
+      if (selectedPaths.length !== 1) {
 
-      if (selected.length !== 1) {
-        setChangeStatus("Select exactly one project file first.", "warning");
+        setChangeStatus("Select exactly one file before generating a proposal.", "error");
+
         return;
+
       }
 
-      const requestText = changeInstruction.value.trim();
+      if (!instruction) {
 
-      if (!requestText) {
-        setChangeStatus("Describe the code change you want.", "warning");
-        changeInstruction.focus();
+        setChangeStatus("Describe the change you want first.", "error");
+
         return;
-      }
 
-      const selectedPath = selected[0].value || selected[0].dataset.path;
-
-      if (!selectedPath) {
-        setChangeStatus(
-          "Could not identify the selected file. Check the file-list code.",
-          "error"
-        );
-        return;
-      }
-
-      if (!loadedProject) {
-        setChangeStatus("Load a project first.", "warning");
-        return;
       }
 
       isProposalBusy = true;
-      proposeChangeButton.disabled = true;
+
+      currentCodeProposalId = null;
+
+      applyChangeButton.disabled = true;
+
       copyChangePreviewButton.disabled = true;
-      changePreview.textContent = "";
-      setChangeStatus("Generating a proposal locally...");
-      setStatus("Generating code change preview...");
+
+      proposeChangeButton.disabled = true;
+
+      changePreview.textContent = "Generating proposal…";
+
+      setChangeStatus("Asking the local model to prepare a diff…");
+
+      setApplyStatus("");
 
       try {
-        const response = await fetch("/project/propose", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            path: selectedPath,
-            instruction: requestText
-          })
-        });
 
-        const data = await readJsonResponse(response);
+        const data = await apiPost("/project/propose", { path: selectedPaths[0], instruction });
 
         if (typeof data.proposal !== "string") {
-          throw new Error(
-            "The /project/propose endpoint must return a string field named 'proposal'."
-          );
+
+          throw new Error("The /project/propose endpoint must return a string field named 'proposal'.");
+
         }
 
         changePreview.textContent = data.proposal;
-        copyChangePreviewButton.disabled = data.proposal.length === 0;
 
-        setChangeStatus(
-          "Preview generated. No files have been modified.",
-          "success"
-        );
-        setStatus("Proposal ready for review");
+        currentCodeProposalId = data.proposal_id || null;
+
+        copyChangePreviewButton.disabled = false;
+
+        applyChangeButton.disabled = !currentCodeProposalId;
+
+        setChangeStatus("Preview generated. Review the diff before approving. No files have been modified.", "success");
+
+        setStatus("Proposal ready for review", "success");
+
+        if (!currentCodeProposalId) {
+
+          setApplyStatus("The server did not return a proposal_id, so applying is disabled.", "warning");
+
+        }
+
       } catch (error) {
-        setChangeStatus("Error: " + error.message, "error");
-        setStatus("Proposal generation failed");
+
+        changePreview.textContent = "Proposal generation failed.";
+
+        setChangeStatus("Could not generate proposal: " + error.message, "error");
+
+        setStatus("Proposal generation failed", "error");
+
       } finally {
+
         isProposalBusy = false;
-        proposeChangeButton.disabled = false;
-      }
-    });
 
-    copyChangePreviewButton.addEventListener("click", async () => {
-      const proposal = changePreview.textContent;
-      if (!proposal) return;
+        updateActionButtons();
 
-      try {
-        await copyText(proposal);
-        copyChangePreviewButton.textContent = "Copied!";
-      } catch {
-        setChangeStatus(
-          "Unable to copy the preview. Select the text and copy it manually.",
-          "warning"
-        );
+// updateActionButtons can disable apply if selection is invalid; preserve valid proposal otherwise.
+
+        if (currentCodeProposalId && getSelectedPaths().length === 1) applyChangeButton.disabled = false;
+
       }
 
-      setTimeout(() => {
-        copyChangePreviewButton.textContent = "Copy preview";
-      }, 1500);
-    });
-
-    // Start the application
-    async function initializeApp() {
-      updateSelectedFileIndicator();
-      await loadHistory();
     }
 
-    initializeApp();
+    async function applyProposal() {
+
+      const proposalId = currentCodeProposalId;
+
+      if (!proposalId) {
+
+        setApplyStatus("Generate a new proposal first.", "error");
+
+        applyChangeButton.disabled = true;
+
+        return;
+
+      }
+
+      const selectedPaths = getSelectedPaths();
+
+      if (selectedPaths.length !== 1) {
+
+        setApplyStatus("Select the same single file and generate a fresh proposal.", "error");
+
+        applyChangeButton.disabled = true;
+
+        currentCodeProposalId = null;
+
+        return;
+
+      }
+
+      const approved = window.confirm(
+
+        "Apply this proposed change to the selected file?\n\n" +
+
+        "The backend should validate the patch and create a backup first."
+
+      );
+
+      if (!approved) {
+
+        setApplyStatus("Application cancelled. No change was applied.");
+
+        return;
+
+      }
+
+      if (isApplying) return;
+
+      isApplying = true;
+
+      applyChangeButton.disabled = true;
+
+      setApplyStatus("Validating patch and applying change…");
+
+      try {
+
+        const data = await apiPost("/project/apply", { proposal_id: proposalId });
+
+        currentCodeProposalId = null;
+
+        const changedPath = data.path || data.file_path || selectedPaths[0];
+
+        const backupPath = data.backup || data.backup_path;
+
+        setApplyStatus("Change applied to " + changedPath + (backupPath ? ". Backup saved at " + backupPath : "."), "success");
+
+        setChangeStatus("Change applied successfully. Generate a new preview for another change.", "success");
+
+        changePreview.textContent = "Change applied. Generate a new proposal to preview another edit.";
+
+        copyChangePreviewButton.disabled = true;
+
+        setStatus("Change applied successfully", "success");
+
+      } catch (error) {
+
+        setApplyStatus("Not applied: " + error.message, "error");
+
+        applyChangeButton.disabled = false;
+
+      } finally {
+
+        isApplying = false;
+
+      }
+
+    }
+
+    $("check-connection").addEventListener("click", checkConnection);
+
+    selectProjectButton.addEventListener("click", loadProject);
+
+    projectPathInput.addEventListener("keydown", (event) => { if (event.key === "Enter") loadProject(); });
+
+    refreshFilesButton.addEventListener("click", async () => {
+
+      try { await loadProjectFiles(); setProjectStatus("File list refreshed.", "success"); }
+
+      catch (error) { setProjectStatus("Could not refresh files: " + error.message, "error"); }
+
+    });
+
+    $("select-all-files").addEventListener("click", () => {
+
+      projectFilesElement.querySelectorAll('input[type="checkbox"]').forEach((input) => { input.checked = true; });
+
+      currentCodeProposalId = null; applyChangeButton.disabled = true; updateActionButtons();
+
+    });
+
+    $("clear-files").addEventListener("click", () => {
+
+      projectFilesElement.querySelectorAll('input[type="checkbox"]').forEach((input) => { input.checked = false; });
+
+      currentCodeProposalId = null; applyChangeButton.disabled = true; updateActionButtons();
+
+    });
+
+    askProjectButton.addEventListener("click", askProject);
+
+    analyzeProjectButton.addEventListener("click", analyzeProject);
+
+    sendMessageButton.addEventListener("click", sendChatMessage);
+
+    chatInput.addEventListener("keydown", (event) => {
+
+      if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }
+
+    });
+
+    proposeChangeButton.addEventListener("click", proposeChange);
+
+    copyChangePreviewButton.addEventListener("click", async () => {
+
+      const text = changePreview.textContent;
+
+      try {
+
+        await navigator.clipboard.writeText(text);
+
+        setChangeStatus("Diff copied to clipboard.", "success");
+
+      } catch {
+
+        setChangeStatus("Clipboard access failed. Select the diff and copy it manually.", "warning");
+
+      }
+
+    });
+
+    applyChangeButton.addEventListener("click", applyProposal);
+
+    updateActionButtons();
+
   </script>
+
+  <script>
+
+  (() => {
+
+    const selector = document.getElementById("conversation-select");
+
+    const newButton = document.getElementById("new-conversation");
+
+    const renameButton = document.getElementById("rename-conversation");
+
+    const deleteButton = document.getElementById("delete-conversation");
+
+    const status = document.getElementById("conversation-status");
+
+    if (!selector || !newButton || !renameButton || !deleteButton || !status) {
+
+      console.error("Conversation controls were not found.");
+
+      return;
+
+    }
+
+    let activeConversationId = null;
+
+    let loadToken = 0; // lets a newer load cancel an older one
+
+    async function api(url, options = {}) {
+
+      const response = await fetch(url, options);
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.detail || "Request failed.");
+
+      return data;
+
+    }
+
+    async function createConversation() {
+
+      return api("/conversations", {
+
+        method: "POST",
+
+        headers: { "Content-Type": "application/json" },
+
+        body: JSON.stringify({ title: "New Chat" })
+
+      });
+
+    }
+
+    function fillSelector(conversations, selectedId) {
+
+      selector.replaceChildren();
+
+      for (const conversation of conversations) {
+
+        const option = document.createElement("option");
+
+        option.value = conversation.id;
+
+        option.textContent = conversation.title;
+
+        selector.appendChild(option);
+
+      }
+
+      if (selectedId !== null && selectedId !== undefined) selector.value = selectedId;
+
+    }
+
+    async function loadConversation(id) {
+
+      if (!id) return;
+
+      const token = ++loadToken;
+
+      status.textContent = "Loading conversation…";
+
+      try {
+
+        const data = await api("/conversations/" + encodeURIComponent(id) + "/messages");
+
+        if (token !== loadToken) return; // a newer load took over
+
+        activeConversationId = id;
+
+        const messageList = document.getElementById("messages");
+
+        messageList.replaceChildren();
+
+        if (data.messages.length === 0) {
+
+          addMessage("system", "New conversation. Ask a question or give the assistant a task.");
+
+        }
+
+        for (const message of data.messages) {
+
+          addMessage(message.role, message.content);
+
+        }
+
+        status.textContent = data.conversation.title;
+
+      } catch (error) {
+
+        if (token === loadToken) status.textContent = "Error: " + error.message;
+
+      }
+
+    }
+
+// Full refresh: rebuilds the dropdown AND loads the selected conversation.
+
+    async function refreshConversations(preferredId = null) {
+
+      const data = await api("/conversations");
+
+      const conversations = data.conversations;
+
+      if (conversations.length === 0) {
+
+        const created = await createConversation();
+
+        return refreshConversations(created.id);
+
+      }
+
+// Compare as strings: <select>.value is always a string, but ids may be numbers.
+
+      const match = (id) => id !== null && id !== undefined &&
+
+        conversations.find((c) => String(c.id) === String(id));
+
+      const found = match(preferredId) || match(activeConversationId) || conversations[0];
+
+      const nextId = found.id;
+
+      fillSelector(conversations, nextId);
+
+      await loadConversation(nextId);
+
+    }
+
+    renameButton.addEventListener("click", async () => {
+
+      const id = activeConversationId;
+
+      if (!id) {
+
+        status.textContent = "Select a conversation first.";
+
+        return;
+
+      }
+
+      const currentTitle = selector.selectedOptions[0]?.textContent || "";
+
+      const newTitle = window.prompt("Enter a new conversation title:", currentTitle);
+
+      if (newTitle === null) return;
+
+      const title = newTitle.trim();
+
+      if (!title) {
+
+        status.textContent = "Title cannot be empty.";
+
+        return;
+
+      }
+
+      if (title.length > 100) {
+
+        status.textContent = "Title must be 100 characters or fewer.";
+
+        return;
+
+      }
+
+      renameButton.disabled = true;
+
+      try {
+
+        const data = await api(
+
+          "/conversations/" + encodeURIComponent(id),
+
+          {
+
+            method: "PATCH",
+
+            headers: { "Content-Type": "application/json" },
+
+            body: JSON.stringify({ title })
+
+          }
+
+        );
+
+        await refreshConversations(id);
+
+        status.textContent = data.message || "Conversation renamed.";
+
+      } catch (error) {
+
+        status.textContent = "Rename failed: " + error.message;
+
+      } finally {
+
+        renameButton.disabled = false;
+
+      }
+
+    });
+
+    deleteButton.addEventListener("click", async () => {
+
+      const id = activeConversationId;
+
+      if (!id) {
+
+        status.textContent = "Select a conversation first.";
+
+        return;
+
+      }
+
+      const currentTitle = selector.selectedOptions[0]?.textContent || "this chat";
+
+      const confirmed = window.confirm(
+
+        'Permanently delete "' + currentTitle + '" and all its messages?\n\n' +
+
+        "This cannot be undone from the app."
+
+      );
+
+      if (!confirmed) {
+
+        status.textContent = "Deletion cancelled.";
+
+        return;
+
+      }
+
+      deleteButton.disabled = true;
+
+      try {
+
+        const data = await api(
+
+          "/conversations/" + encodeURIComponent(id),
+
+          { method: "DELETE" }
+
+        );
+
+        await refreshConversations(data.replacement_id);
+
+        status.textContent = data.message || "Conversation deleted.";
+
+      } catch (error) {
+
+        status.textContent = "Delete failed: " + error.message;
+
+      } finally {
+
+        deleteButton.disabled = false;
+
+      }
+
+    });
+
+// Light refresh: updates titles/order only, leaves the messages alone.
+
+    async function refreshConversationList() {
+
+      const data = await api("/conversations");
+
+      fillSelector(data.conversations, activeConversationId);
+
+    }
+
+    selector.addEventListener("change", () => loadConversation(selector.value));
+
+    newButton.addEventListener("click", async () => {
+
+      newButton.disabled = true;
+
+      try {
+
+        const created = await createConversation();
+
+        await refreshConversations(created.id);
+
+      } catch (error) {
+
+        status.textContent = "Error: " + error.message;
+
+      } finally {
+
+        newButton.disabled = false;
+
+      }
+
+    });
+
+// Exposed for the chat send handler.
+
+    window.getActiveConversationId = () => activeConversationId;
+
+    window.refreshConversationList = refreshConversationList;
+
+    refreshConversations().catch((error) => {
+
+      status.textContent = "Error: " + error.message;
+
+    });
+
+  })();
+
+  </script>
+
+  <script>
+
+  (() => {
+
+    const fileSelect = document.getElementById("editor-file");
+
+    const refreshButton = document.getElementById("refresh-editor-files");
+
+    const loadButton = document.getElementById("load-editor-file");
+
+    const saveButton = document.getElementById("save-editor-file");
+
+    const resetButton = document.getElementById("reset-editor-file");
+
+    const status = document.getElementById("editor-status");
+
+    const textarea = document.getElementById("editor-text");
+
+    const highlight = document.getElementById("editor-highlight");
+
+    const highlightLayer = document.getElementById("editor-highlight-layer");
+
+    const modelSelect = document.getElementById("settings-model");
+
+    const temperature = document.getElementById("settings-temperature");
+
+    const temperatureValue = document.getElementById("temperature-value");
+
+    const maxTokens = document.getElementById("settings-max-tokens");
+
+    if (
+
+      !fileSelect || !refreshButton || !loadButton ||
+
+      !saveButton || !resetButton || !status ||
+
+      !textarea || !highlight || !highlightLayer
+
+    ) {
+
+      console.error("Code editor controls were not found.");
+
+      return;
+
+    }
+
+    let loadedPath = "";
+
+    let originalText = "";
+
+    let originalHash = "";
+
+    const extensionLanguages = {
+
+      py: "python",
+
+      js: "javascript",
+
+      mjs: "javascript",
+
+      cjs: "javascript",
+
+      ts: "typescript",
+
+      tsx: "tsx",
+
+      jsx: "jsx",
+
+      html: "markup",
+
+      htm: "markup",
+
+      xml: "markup",
+
+      css: "css",
+
+      json: "json",
+
+      md: "markdown",
+
+      sql: "sql",
+
+      sh: "bash",
+
+      bash: "bash",
+
+      yml: "yaml",
+
+      yaml: "yaml",
+
+      c: "c",
+
+      h: "c",
+
+      cpp: "cpp",
+
+      cc: "cpp",
+
+      hpp: "cpp",
+
+      cs: "csharp",
+
+      java: "java",
+
+      swift: "swift",
+
+      go: "go",
+
+      rs: "rust"
+
+    };
+
+    function setStatus(message) {
+
+      status.textContent = message;
+
+    }
+
+    function hasUnsavedChanges() {
+
+      return textarea.value !== originalText;
+
+    }
+
+    function refreshScroll() {
+
+      highlightLayer.scrollTop = textarea.scrollTop;
+
+      highlightLayer.scrollLeft = textarea.scrollLeft;
+
+    }
+
+    function updateHighlight() {
+
+      const extension = loadedPath.includes(".")
+
+        ? loadedPath.split(".").pop().toLowerCase()
+
+        : "";
+
+      const language = extensionLanguages[extension] || "none";
+
+      highlight.className = `language-${language}`;
+
+      highlight.textContent = textarea.value + "\n";
+
+// Prism is optional. Without it the code simply shows as plain text.
+
+      if (window.Prism && window.Prism.languages && window.Prism.languages[language]) {
+
+        window.Prism.highlightElement(highlight);
+
+      }
+
+      refreshScroll();
+
+    }
+
+// quiet = true is used for automatic refreshes so they never overwrite
+
+// the "Unsaved changes" message while you are editing.
+
+    function refreshFileList({ quiet = false } = {}) {
+
+      const previousValue = fileSelect.value;
+
+      const filePanel = document.getElementById("project-files");
+
+      const announce = (message) => {
+
+        if (!quiet || !hasUnsavedChanges()) setStatus(message);
+
+      };
+
+      if (!filePanel) {
+
+        setStatus("The existing project file list was not found.");
+
+        return;
+
+      }
+
+      const files = Array.from(filePanel.querySelectorAll('input[type="checkbox"]'))
+
+        .map((checkbox) => {
+
+          const value = checkbox.dataset.path ||
+
+            (checkbox.value !== "on" ? checkbox.value : "");
+
+          return typeof value === "string" ? value.trim() : "";
+
+        })
+
+        .filter(Boolean);
+
+      const uniqueFiles = [...new Set(files)].sort();
+
+      fileSelect.replaceChildren();
+
+      if (uniqueFiles.length === 0) {
+
+        const option = document.createElement("option");
+
+        option.value = "";
+
+        option.textContent = "No project files found";
+
+        fileSelect.appendChild(option);
+
+        announce("Load a project first, then refresh the file list.");
+
+        return;
+
+      }
+
+      for (const path of uniqueFiles) {
+
+        const option = document.createElement("option");
+
+        option.value = path;
+
+        option.textContent = path;
+
+        fileSelect.appendChild(option);
+
+      }
+
+      if (uniqueFiles.includes(previousValue)) {
+
+        fileSelect.value = previousValue;
+
+      }
+
+      announce(`${uniqueFiles.length} project files available.`);
+
+    }
+
+    async function loadFile() {
+
+      const path = fileSelect.value;
+
+      if (!path) {
+
+        setStatus("Select a file first.");
+
+        return;
+
+      }
+
+      if (
+
+        loadedPath &&
+
+        hasUnsavedChanges() &&
+
+        !window.confirm("Discard unsaved editor changes and load another file?")
+
+      ) {
+
+        return;
+
+      }
+
+      loadButton.disabled = true;
+
+      setStatus("Loading file...");
+
+      try {
+
+        const response = await fetch(`/project/file?path=${encodeURIComponent(path)}`);
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+          throw new Error(data.detail || "Could not load the file.");
+
+        }
+
+        loadedPath = data.path || path;
+
+        originalText = data.content;
+
+        originalHash = data.sha256;
+
+        textarea.value = data.content;
+
+        updateHighlight();
+
+        setStatus(`Loaded ${loadedPath}. No unsaved changes.`);
+
+      } catch (error) {
+
+        setStatus(`Load failed: ${error.message}`);
+
+      } finally {
+
+        loadButton.disabled = false;
+
+      }
+
+    }
+
+    async function saveFile() {
+
+      if (!loadedPath) {
+
+        setStatus("Load a file before saving.");
+
+        return;
+
+      }
+
+      if (!hasUnsavedChanges()) {
+
+        setStatus("There are no changes to save.");
+
+        return;
+
+      }
+
+      saveButton.disabled = true;
+
+      setStatus("Saving file and creating backup...");
+
+      try {
+
+        const response = await fetch("/project/file/save", {
+
+          method: "POST",
+
+          headers: { "Content-Type": "application/json" },
+
+          body: JSON.stringify({
+
+            path: loadedPath,
+
+            content: textarea.value,
+
+            original_sha256: originalHash
+
+          })
+
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+          throw new Error(data.detail || "Could not save the file.");
+
+        }
+
+        originalText = textarea.value;
+
+        originalHash = data.sha256;
+
+        setStatus(`Saved ${loadedPath}.` + (data.backup ? ` Backup: ${data.backup}` : ""));
+
+      } catch (error) {
+
+        setStatus(`Save failed: ${error.message}`);
+
+      } finally {
+
+        saveButton.disabled = false;
+
+      }
+
+    }
+
+    refreshButton.addEventListener("click", () => refreshFileList());
+
+    loadButton.addEventListener("click", loadFile);
+
+    saveButton.addEventListener("click", saveFile);
+
+    resetButton.addEventListener("click", () => {
+
+      if (!loadedPath) {
+
+        setStatus("Load a file before resetting.");
+
+        return;
+
+      }
+
+      if (hasUnsavedChanges() && !window.confirm("Discard your unsaved edits?")) {
+
+        return;
+
+      }
+
+      textarea.value = originalText;
+
+      updateHighlight();
+
+      setStatus("Reset to the last loaded or saved version.");
+
+    });
+
+    textarea.addEventListener("input", () => {
+
+      updateHighlight();
+
+      setStatus(hasUnsavedChanges() ? "Unsaved changes." : "No unsaved changes.");
+
+    });
+
+    textarea.addEventListener("scroll", refreshScroll);
+
+    textarea.addEventListener("keydown", (event) => {
+
+      if (event.key !== "Tab") return;
+
+event.preventDefault();
+
+      const start = textarea.selectionStart;
+
+      const end = textarea.selectionEnd;
+
+      textarea.setRangeText("    ", start, end, "end");
+
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+
+    });
+
+// Warn before closing the tab with unsaved edits.
+
+    window.addEventListener("beforeunload", (event) => {
+
+      if (loadedPath && hasUnsavedChanges()) {
+
+event.preventDefault();
+
+event.returnValue = "";
+
+      }
+
+    });
+
+// Lets the main script refresh the dropdown when the project file list changes.
+
+    window.refreshEditorFileList = refreshFileList;
+
+    refreshFileList();
+
+  if (
+
+    !modelSelect || !temperature || !temperatureValue ||
+
+    !maxTokens || !status || !saveButton ||
+
+    !resetButton || !refreshButton
+
+  ) {
+
+    return;
+
+  }
+
+  const defaults = {
+
+    model: "qwen2.5-coder:7b-instruct",
+
+    temperature: 0.2,
+
+    max_tokens: 2048,
+
+  };
+
+  function setStatus(message) {
+
+    status.textContent = message;
+
+  }
+
+  function updateTemperatureLabel() {
+
+    temperatureValue.value = Number(temperature.value).toFixed(1);
+
+    temperatureValue.textContent = temperatureValue.value;
+
+  }
+
+  async function requestJson(url, options = {}) {
+
+    const response = await fetch(url, options);
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+
+      throw new Error(data.detail || `Request failed: ${response.status}`);
+
+    }
+
+    return data;
+
+  }
+
+  async function refreshModels(selectedModel) {
+
+    const data = await requestJson("/models");
+
+    const models = [...new Set(data.models || [])];
+
+    modelSelect.replaceChildren();
+
+    if (models.length === 0) {
+
+      throw new Error(
+
+        "No local Ollama models found. Install a model before selecting one."
+
+      );
+
+    }
+
+    for (const model of models) {
+
+      const option = document.createElement("option");
+
+      option.value = model;
+
+      option.textContent = model;
+
+      modelSelect.appendChild(option);
+
+    }
+
+    if (selectedModel && models.includes(selectedModel)) {
+
+      modelSelect.value = selectedModel;
+
+    } else if (models.includes(defaults.model)) {
+
+      modelSelect.value = defaults.model;
+
+    } else {
+
+      modelSelect.selectedIndex = 0;
+
+    }
+
+  }
+
+  function displaySettings(settings) {
+
+    modelSelect.value = settings.model;
+
+    temperature.value = String(settings.temperature);
+
+    maxTokens.value = String(settings.max_tokens);
+
+    updateTemperatureLabel();
+
+  }
+
+  async function loadSettings() {
+
+    setStatus("Loading settings...");
+
+    try {
+
+      const settings = await requestJson("/settings");
+
+      await refreshModels(settings.model);
+
+      displaySettings(settings);
+
+      setStatus("Settings loaded.");
+
+    } catch (error) {
+
+      setStatus(`Could not load settings: ${error.message}`);
+
+    }
+
+  }
+
+  async function saveSettings(values) {
+
+    saveButton.disabled = true;
+
+    resetButton.disabled = true;
+
+    setStatus("Saving settings...");
+
+    try {
+
+      const saved = await requestJson("/settings", {
+
+        method: "PUT",
+
+        headers: { "Content-Type": "application/json" },
+
+        body: JSON.stringify(values),
+
+      });
+
+      displaySettings(saved);
+
+      setStatus("Settings saved. They apply to the next AI request.");
+
+    } catch (error) {
+
+      setStatus(`Save failed: ${error.message}`);
+
+    } finally {
+
+      saveButton.disabled = false;
+
+      resetButton.disabled = false;
+
+    }
+
+  }
+
+  temperature.addEventListener("input", updateTemperatureLabel);
+
+  saveButton.addEventListener("click", () => {
+
+    saveSettings({
+
+      model: modelSelect.value,
+
+      temperature: Number(temperature.value),
+
+      max_tokens: Number(maxTokens.value),
+
+    });
+
+  });
+
+  resetButton.addEventListener("click", () => {
+
+    saveSettings({ ...defaults });
+
+  });
+
+  refreshButton.addEventListener("click", async () => {
+
+    refreshButton.disabled = true;
+
+    setStatus("Checking local Ollama models...");
+
+    try {
+
+      await refreshModels(modelSelect.value);
+
+      setStatus("Local model list refreshed.");
+
+    } catch (error) {
+
+      setStatus(`Refresh failed: ${error.message}`);
+
+    } finally {
+
+      refreshButton.disabled = false;
+
+    }
+
+  });
+
+  updateTemperatureLabel();
+
+  loadSettings();
+
+  })();
+
+  </script>
+
 </body>
+
 </html>
