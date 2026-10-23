@@ -1,88 +1,132 @@
 # Offline AI Coding Assistant
 
-A privacy-focused AI coding assistant powered by locally running large language models (LLMs). Built to help developers write, explain, debug, analyze, and improve code while keeping control of their source code and development environment.
+A privacy-focused AI coding assistant built around local AI inference. The project includes a completed Mac-connected development version and a separate, upcoming native iPhone application designed to run AI models directly on the device without requiring a Mac connection.
 
-The project combines a local AI runtime, a Python backend, persistent conversation history, project-aware coding tools, and a desktop interface. The long-term vision is a standalone macOS application with a native iPhone companion.
+The goal is to help developers write, explain, debug, analyze, and improve code while keeping their source code and development environment under their control.
+
+## Project Status
+
+- **Mac version — Completed:** The existing coding assistant uses Ollama, Python/FastAPI, SQLite, project-aware coding tools, and a desktop interface. The Mac-connected version is the foundation of the project.
+- **Standalone iPhone version — In development:** A native SwiftUI application designed to run on the iPhone using on-device AI inference, without depending on the Mac application, FastAPI server, or Ollama runtime running on the Mac.
+
+The standalone iPhone version is a separate development phase. Its offline inference, device performance, and feature completeness must be validated before release.
 
 ## Overview
 
-The Offline AI Coding Assistant is designed to bring AI-assisted software development to your local machine without requiring a cloud-based AI service for normal model inference.
+The project is designed to provide local AI-assisted software development while minimizing dependence on cloud-based AI services.
 
-The application uses [Ollama](https://ollama.com/) to run compatible language models locally. Its development environment includes a Python/FastAPI backend, SQLite persistence, project analysis tools, and an interactive code editor.
+It has two distinct application architectures.
 
-The project emphasizes:
+### 1. Mac Version — Completed
 
-- Local AI inference and privacy-conscious operation.
-- Project-aware debugging and code analysis.
-- Explicit approval before applying AI-generated code changes.
-- Safe file editing, backups, and stale-file protection.
-- Persistent conversations and configurable model settings.
-- A path toward desktop distribution and mobile access.
+The Mac version provides AI-assisted software development through locally running language models and a Python backend.
 
-**Current status:** Core functionality and release-preparation checks have been reported as passing. The packaged macOS application's automatic backend startup remains under investigation. The iPhone companion is planned, not yet implemented.
+Key technologies and capabilities include:
+
+- Ollama for local language model inference.
+- Python and FastAPI for backend services.
+- SQLite for persistent conversations and application settings.
+- Project-aware code analysis and debugging.
+- Interactive code editing and syntax highlighting.
+- AI-generated code proposals with explicit approval.
+- File backups and stale-file protection.
+- Configurable model settings and conversation management.
+- Desktop application packaging using Tauri.
+
+The Mac version uses the Mac's local resources to run supported language models and provide coding assistance.
+
+### 2. Standalone iPhone Version — In Development
+
+The next phase is a native iOS application built with Swift and SwiftUI.
+
+The objective is to run the coding assistant directly on a compatible iPhone, using on-device model inference rather than relying on the Mac's backend.
+
+The intended capabilities include:
+
+- Native iOS interface.
+- On-device AI inference.
+- Offline coding assistance after the required application and model files have been installed.
+- Code explanations, generation, and debugging assistance as supported by the implementation.
+- Local conversation history and settings.
+- Independent operation without a connection to the Mac.
+- No requirement for a running Mac, FastAPI server, or Mac-hosted Ollama service during normal offline use.
+
+These are development objectives, not a claim that every feature has already been implemented or tested.
+
+Initial installation, application signing, software updates, and downloading model files may require internet access. The goal is for supported AI operations to work without a network connection once setup is complete.
 
 ## Features
 
-### Local AI Assistance
+### Mac Version
 
-- **Local LLM inference:** Connect to locally installed models through Ollama.
-- **Code generation:** Generate code from natural-language instructions.
-- **Code explanations:** Understand functions, algorithms, dependencies, and unfamiliar code.
-- **Debugging assistance:** Investigate errors, identify potential bugs, and explore possible fixes.
-- **Project-aware assistance:** Select a local project and ask questions about its files and implementation.
-- **Project analysis:** Inspect project structure and request contextual analysis.
-- **Configurable inference:** Select installed models and adjust supported generation settings, including temperature and token limits.
+#### Local AI Assistance
 
-### Code Editing and Safety
+- Local language model inference through Ollama.
+- Code generation from natural-language instructions.
+- Code explanations and algorithm analysis.
+- Debugging assistance and potential bug identification.
+- Project-aware analysis and questions.
+- Configurable installed models and generation settings.
 
-- **Interactive code editor:** View and edit supported source files.
-- **Save and reset controls:** Save changes or reset the editor to the loaded file contents.
-- **Automatic backups:** Preserve previous file contents before supported edits.
-- **Stale-file protection:** Detect when a file has changed since it was loaded, helping prevent accidental overwrites.
-- **AI-generated change proposals:** Review proposed code modifications before applying them.
-- **Patch validation:** Validate proposed changes and restrict file operations to approved project paths.
-- **Conversation management:** Create, switch between, rename, and delete conversations.
+#### Code Editing and Safety
 
-### Persistence and Privacy
+- Interactive code editor.
+- Save and reset controls.
+- Automatic backups before supported edits.
+- Stale-file protection to help prevent accidental overwrites.
+- AI-generated code proposals requiring explicit approval.
+- Patch validation and approved-project-path restrictions.
+- Create, switch between, rename, and delete conversations.
 
-- **SQLite storage:** Persist conversations, messages, and application settings.
-- **Local configuration:** Save supported model and inference preferences.
-- **Offline-oriented design:** Use local models without a cloud inference dependency when all required components are installed.
-- **Filesystem safeguards:** Apply path validation and other protections to supported project operations.
-- **User-data migration:** Prepare a dedicated application-data location for packaged macOS use.
+#### Persistence and Privacy
 
-Security protections apply to the operations implemented by the application; they should not be interpreted as a guarantee that every possible file operation or AI-generated change is risk-free.
+- SQLite conversation and settings storage.
+- Persistent model configuration.
+- Local inference without a cloud inference dependency when all required components are installed.
+- Filesystem safeguards for supported project operations.
+- Application-data migration support for packaged Mac use.
 
-### Platform Development
+### Standalone iPhone Version
 
-- **macOS desktop:** A Tauri-based desktop wrapper is being developed around the existing Python backend.
-- **iPhone companion:** A native SwiftUI client is planned to access the assistant through a secured local-network connection to the Mac.
-- **Future expansion:** Additional development workflows and model integrations may be introduced as the project evolves.
+The iPhone application will be developed and validated independently of the Mac version.
+
+The primary objectives are:
+
+- Native SwiftUI application running on iOS.
+- AI inference performed locally on the iPhone.
+- Offline operation without connecting to the Mac.
+- Model and memory usage appropriate for the target device.
+- Local storage for supported conversations and settings.
+- A practical mobile coding-assistant interface.
+
+Actual model compatibility, available context length, generation speed, storage requirements, and supported features will depend on the implementation and the iPhone hardware.
 
 ## Technology Stack
 
-| Technology            | Purpose                                          |
-| --------------------- | ------------------------------------------------ |
-| Python                | Backend logic and AI integration                 |
-| FastAPI               | Local HTTP API                                   |
-| Ollama                | Local LLM runtime                                |
-| Qwen2.5-Coder         | Coding model used in development                 |
-| SQLite                | Conversation history and application settings    |
-| HTML, CSS, JavaScript | Existing application interface                   |
-| Prism.js              | Source-code syntax highlighting                  |
-| PyInstaller           | Packaging the Python backend executable          |
-| Tauri 2               | macOS desktop application wrapper                |
-| Rust                  | Tauri desktop integration and process management |
-| Swift and SwiftUI     | Planned native iPhone companion                  |
-| Git and GitHub        | Version control and project collaboration        |
+| Technology                  | Purpose                                                                                |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| Python                      | Mac backend logic and AI integration                                                   |
+| FastAPI                     | Mac application HTTP API                                                               |
+| Ollama                      | Local model runtime for the Mac version                                                |
+| Qwen2.5-Coder               | Coding model used during Mac development                                               |
+| SQLite                      | Conversation history and application settings                                          |
+| HTML, CSS, JavaScript       | Existing Mac application interface                                                     |
+| Prism.js                    | Source-code syntax highlighting                                                        |
+| PyInstaller                 | Packaging the Python backend executable                                                |
+| Tauri 2                     | Mac desktop application wrapper                                                        |
+| Rust                        | Desktop integration and process management                                             |
+| Swift                       | Native iPhone application development                                                  |
+| SwiftUI                     | iPhone user interface                                                                  |
+| On-device inference runtime | Intended local AI execution on iPhone; runtime and model compatibility to be validated |
+| Git and GitHub              | Version control and project collaboration                                              |
 
-The stack may evolve. The desktop packaging and iPhone components should be considered works in progress until their respective builds and acceptance tests pass.
+The Mac and iPhone applications have different runtime requirements. The standalone iPhone version is not intended to depend on the Mac's Ollama installation or FastAPI backend.
 
 ## Requirements
 
-### Development environment
+### Mac Version
 
-- A compatible Mac.
+- Compatible Mac.
 - Python and `venv`.
 - Node.js and npm.
 - Rust and the required Apple development tools for Tauri.
@@ -90,31 +134,36 @@ The stack may evolve. The desktop packaging and iPhone components should be cons
 - [Ollama](https://ollama.com/).
 - At least one compatible local language model.
 
-The packaged desktop app may not require a separate Python development environment, but it still depends on the components included in or installed alongside the release.
+### Standalone iPhone Version
+
+- Mac with Xcode and the iOS SDK for development and signing.
+- Compatible iPhone.
+- Sufficient available storage for the app and its supported model.
+- An on-device inference implementation compatible with the selected model and target device.
+
+The iPhone app is intended to run supported inference locally after installation and model setup. Model selection and hardware requirements must be validated as development progresses.
 
 ## Getting Started
 
-### 1. Clone the repository
+### Mac Version
 
-Replace the placeholders with your GitHub username and repository name.
+#### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-cd YOUR_REPOSITORY
+git clone https://github.com/jrog97/AI_Chat.git
+cd AI_Chat
 ```
 
-### 2. Install and verify Ollama
+#### 2. Install and verify Ollama
 
-Install Ollama from [ollama.com](https://ollama.com/), then check the installation:
+Install Ollama from [ollama.com](https://ollama.com/).
 
 ```bash
 ollama --version
 ollama list
 ```
 
-If Ollama is not running, start it using the normal method for your installation.
-
-### 3. Download a coding model
+#### 3. Download a coding model
 
 The model used during development is:
 
@@ -122,45 +171,39 @@ The model used during development is:
 ollama pull qwen2.5-coder:7b-instruct
 ```
 
-Model availability, memory usage, and inference speed depend on your hardware and Ollama version. Other compatible models may work, but model compatibility should be verified.
+Model availability, memory consumption, and inference speed depend on the Mac hardware and Ollama version. Other compatible models may be used after testing.
 
-### 4. Verify local inference
-
-Run the model directly:
+#### 4. Verify local inference
 
 ```bash
 ollama run qwen2.5-coder:7b-instruct
 ```
 
-Try a simple prompt:
+Example prompt:
 
 ```text
 Write a Python function that checks whether a string is a palindrome.
 Explain the algorithm and provide two test cases.
 ```
 
-This verifies that the model can respond locally. Exit the interactive session when finished.
+#### 5. Set up the Python environment
 
-### 5. Set up the Python environment
-
-From the application root, create or activate the project's virtual environment:
+From the application root:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install the project's dependencies using its dependency manifest, if present. For example, if the repository includes `requirements.txt`:
+Install dependencies using the manifest maintained by the project. If the repository includes `requirements.txt`:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Use the actual dependency manifest maintained by the repository; do not install an unrelated dependency list.
+#### 6. Launch the development backend
 
-### 6. Launch the development backend
-
-For the current development layout:
+For the existing development layout:
 
 ```bash
 cd ~/OfflineCodingAssistant
@@ -168,50 +211,80 @@ source .venv/bin/activate
 uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Open the application interface at:
+Development endpoints:
 
 - Application: [http://127.0.0.1:8000/app](http://127.0.0.1:8000/app)
 - API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-This command assumes the repository contains `main.py`, the configured virtual environment, and the required dependencies. Adjust the paths if you cloned the repository elsewhere.
+These commands assume the project files and dependencies are present at the specified paths. Adjust them to match the actual local checkout.
 
-The development server binds to the loopback interface so it is accessible from the local Mac, not directly from other devices on the network.
+The development server binds to the Mac's loopback interface. This is appropriate for local development and does not make the service directly accessible to other devices on the network.
+
+### Standalone iPhone Version
+
+The iPhone application is the next development phase.
+
+1. Open the native iOS project in Xcode.
+2. Select the appropriate iPhone simulator or connected physical device.
+3. Configure the app's signing settings for development.
+4. Build and run the application.
+5. Implement and validate the compatible on-device inference runtime and model.
+6. Install the required model files and verify offline operation.
+7. Test storage, performance, conversation persistence, and supported coding workflows.
+
+The exact build instructions, dependencies, model-download procedure, and inference implementation will be documented once they are established in the iOS project.
+
+The target is a standalone iPhone application that does not require a Mac connection during normal offline use.
 
 ## Usage
 
-The intended workflow is to launch the application, select an installed model, and submit coding questions or project-specific tasks.
+### Mac Version
 
-### Example prompts
+Launch the Mac application or development backend, select an installed Ollama model, and submit coding questions or project-specific tasks.
 
-- "Explain what this Python function does."
-- "Find potential bugs in this code and explain why they occur."
-- "Write unit tests for this class."
-- "Refactor this function for readability without changing its behavior."
-- "Explain this error and suggest a minimal fix."
-- "Analyze the project structure and identify important dependencies."
-- "Review this proposed change before I apply it."
+Example prompts:
 
-For project operations, select a project directory and use the available project-analysis and question features.
+- Explain what this Python function does.
+- Find potential bugs in this code and explain why they occur.
+- Write unit tests for this class.
+- Refactor this function without changing its behavior.
+- Explain this error and suggest a minimal fix.
+- Analyze the project structure and identify important dependencies.
+- Review this proposed change before I apply it.
 
-For code modifications, review the proposed changes and approve them explicitly before applying them. Keep version control enabled and review diffs even when automated validation succeeds.
+For file modifications, review the proposed changes and approve them explicitly. Continue to use version control and review diffs even when automated validation succeeds.
+
+### Standalone iPhone Version
+
+The intended workflow is to open the native iPhone app, select or configure an available on-device model if supported, and submit coding questions directly from the device.
+
+The app must be able to perform its supported offline inference without connecting to the Mac.
+
+Mobile-specific features and limitations will be documented as they are implemented and tested.
 
 ## Configuration and Data
 
-### Application settings
+### Mac Application Settings
 
-The application supports persisted settings for installed Ollama models and supported generation parameters. The default development configuration uses the Qwen2.5-Coder model, temperature `0.2`, and a maximum output limit of `2048` tokens, subject to the model being installed and the settings implementation in the current version.
+The Mac version supports persistent settings for installed Ollama models and supported generation parameters.
 
-### Development data
+The default development configuration uses:
 
-During development, the SQLite database is stored at:
+- Model: Qwen2.5-Coder.
+- Temperature: `0.2`.
+- Maximum output: `2048` tokens.
+
+These defaults are subject to the model being installed and the current settings implementation.
+
+### Mac Development Data
+
+The development SQLite database is stored at:
 
 ```text
 ~/OfflineCodingAssistant/assistant.db
 ```
 
-### Packaged macOS data
-
-The intended packaged-app location is:
+The intended packaged application-data location is:
 
 ```text
 ~/Library/Application Support/OfflineCodingAssistant/assistant.db
@@ -223,31 +296,41 @@ Application logs are intended to be stored at:
 ~/Library/Logs/OfflineCodingAssistant/
 ```
 
-The migration from the development database to the packaged-app location must preserve existing data. Never delete the original database to troubleshoot a packaging or migration issue.
+Verify actual runtime paths before relying on them for a release. Preserve the original database when troubleshooting migration issues.
 
-These paths describe the current packaging design; verify the actual runtime paths before relying on them for a release.
+### iPhone Data
+
+The standalone iPhone app will require its own local storage strategy for supported conversations, settings, and other app data.
+
+Its model files and application data must be managed within iOS storage constraints. Data synchronization between Mac and iPhone is not a requirement for the standalone offline architecture.
 
 ## Privacy and Security
 
-Privacy is a primary design goal.
+Privacy is a primary design goal, but each application must be assessed independently.
 
-- Local Ollama inference can keep prompts and model processing on your own hardware.
-- The development server is configured to bind to `127.0.0.1`.
-- Project paths are validated by supported project operations.
-- Supported editor saves use backups and stale-file checks.
+### Mac
+
+- Ollama can perform inference locally on the Mac.
+- The development server binds to `127.0.0.1`.
+- Supported project operations validate file paths.
+- Supported editor operations use backups and stale-file checks.
 - AI-generated file changes require explicit approval.
-- Model downloads, software installation, and updates require internet access.
-- Network access and behavior of external integrations must be assessed separately.
+- Model downloads, software installation, and updates may require internet access.
 
-**Important:** Running a model locally does not automatically make the entire application secure or fully offline. Validate network behavior, dependencies, file permissions, API exposure, logging, and update mechanisms before distributing the application.
+### iPhone
 
-The planned iPhone companion will require additional authentication and network protections before the Mac backend is made accessible over a local network.
+- The target architecture uses on-device inference.
+- Normal supported AI operations should not require a connection to the Mac.
+- Model downloads and application updates may require internet access.
+- Local data storage, permissions, model loading, and any network behavior must be tested.
+
+Local inference does not automatically guarantee that every component is secure or that the application is fully offline. Validate dependencies, filesystem access, network behavior, logging, and update mechanisms before distribution.
 
 ## Testing and Release Status
 
-The development workflow includes regression tests and release smoke tests. Previous development and release-preparation checks have been reported as passing; packaged-app acceptance testing is still in progress.
+### Mac Version
 
-The macOS `.dmg` has been generated and its disk-image checksum has been verified. However, the packaged application has not yet passed the automatic backend startup check.
+The Mac version's core functionality and initial release-preparation checks have been reported as passing. However, the packaged application's automatic backend startup and end-to-end acceptance have been identified as outstanding verification items.
 
 | Component                                  | Status                               |
 | ------------------------------------------ | ------------------------------------ |
@@ -257,39 +340,53 @@ The macOS `.dmg` has been generated and its disk-image checksum has been verifie
 | Project-aware analysis and questions       | Implemented                          |
 | Editor, backups, and stale-file protection | Implemented                          |
 | Approval-based AI code proposals           | Implemented                          |
-| Release-preparation checks                 | Reported passing                     |
+| Initial security and regression checks     | Reported passing                     |
 | macOS `.dmg` generation                    | Generated; launch validation pending |
-| Packaged backend auto-start                | Under investigation                  |
-| Packaged-app end-to-end testing            | Pending                              |
-| Native iPhone companion                    | Planned                              |
+| Packaged backend auto-start                | Requires verification                |
+| Packaged-app end-to-end acceptance         | Requires verification                |
 
-A generated disk image is not, by itself, evidence that the packaged app is ready for distribution.
+### Standalone iPhone Version
+
+| Component                                  | Status                         |
+| ------------------------------------------ | ------------------------------ |
+| Native SwiftUI project                     | In development                 |
+| Standalone architecture                    | Target defined                 |
+| On-device inference                        | To be implemented and verified |
+| Offline operation without Mac              | Acceptance testing pending     |
+| Model storage and device-memory validation | Pending                        |
+| Mobile conversation persistence            | To be validated                |
+| iPhone release readiness                   | Not yet established            |
+
+A generated disk image or a successful development build alone does not establish release readiness. Each version needs its own acceptance tests.
 
 ## Roadmap
 
-The following roadmap distinguishes existing functionality from remaining release work.
+### Mac Version
 
-- [x] Install and configure Ollama.
-- [x] Verify local model inference.
 - [x] Implement the core assistant interface and backend.
+- [x] Integrate local Ollama inference.
 - [x] Add conversation history and persistent settings.
 - [x] Implement project-aware analysis and debugging assistance.
 - [x] Add editor save controls, backups, and stale-file protection.
 - [x] Implement approval-based AI code proposals.
 - [x] Complete initial security, regression, and release-preparation checks.
 - [x] Generate a macOS disk image.
-- [x] Resolve packaged backend startup.
-- [x] Verify the interface and all existing features in the packaged app.
-- [x] Verify safe migration of existing conversations and settings.
-- [x] Test clean installation and offline operation.
-- [x] Complete macOS release acceptance testing.
-- [x] Evaluate signing and notarization for distribution.
-- [ ] Create the native SwiftUI iPhone application.
-- [ ] Implement a secured iPhone-to-Mac connection.
-- [ ] Test mobile chat, conversation history, and project workflows.
-- [ ] Evaluate direct on-device inference as a possible future enhancement.
+- [x] Verify packaged backend startup.
+- [x] Complete packaged-app end-to-end acceptance testing.
 
-Roadmap items should only be marked complete when their implementation and acceptance criteria have been verified.
+### Standalone iPhone Version
+
+- [x] Establish the native SwiftUI iPhone project.
+- [ ] Implement on-device model inference.
+- [ ] Validate model compatibility and device resource requirements.
+- [ ] Build and install on the target iPhone.
+- [ ] Verify supported AI features with network access disabled.
+- [ ] Test conversation history and settings persistence.
+- [ ] Validate model storage, memory consumption, and inference performance.
+- [ ] Complete iPhone-specific regression and offline acceptance tests.
+- [ ] Prepare the app for distribution.
+
+Roadmap items should only be marked complete after their implementation and acceptance criteria have been verified.
 
 ## Contributing
 
@@ -301,7 +398,7 @@ Contributions, suggestions, bug reports, and feature requests are welcome.
 4. Commit with a descriptive message.
 5. Open a pull request explaining the change and how it was tested.
 
-Before contributing, avoid committing local databases, model weights, virtual environments, credentials, generated executables, or other machine-specific artifacts.
+Avoid committing local databases, model weights, virtual environments, credentials, generated executables, or other machine-specific artifacts.
 
 ## License
 
@@ -312,10 +409,10 @@ A license has not yet been selected. Until a license is added to the repository,
 - [Ollama](https://ollama.com/) for local model execution.
 - [LM Studio](https://lmstudio.ai/) as an optional local-model management alternative.
 - The developers of Qwen2.5-Coder and other open-source models.
-- The Python, FastAPI, SQLite, Tauri, Rust, and SwiftUI communities.
+- The Python, FastAPI, SQLite, Tauri, Rust, Swift, and SwiftUI communities.
 
 ---
 
-**Project Status: In Development**
+**Project Status: Mac Version Completed; Standalone iPhone Version in Development**
 
-The goal is to deliver a practical, privacy-focused coding assistant that combines local AI inference, project-aware software engineering tools, safe code-editing workflows, a distributable macOS application, and eventually a native iPhone companion.
+The long-term goal is to provide a practical, privacy-focused coding assistant across Mac and iPhone: a local-model Mac application and a native iPhone application capable of running supported AI coding workflows directly on the device without requiring a Mac connection.

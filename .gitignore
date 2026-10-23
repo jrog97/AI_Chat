@@ -38,3 +38,10 @@ htmlcov/
 
 # Logs
 *.log
+# Mobile gateway local secrets
+certs/
+.offline_coding_assistant_mobile_token
+
+# Mobile gateway local secrets
+certs/
+.offline_coding_assistant_mobile_token
